@@ -12,7 +12,8 @@
       "Bash(curl -s -L \"https://docs.google.com/spreadsheets/d/1pXh3KriF1L5yaB8K2ERCe9Kw5i6vOwm1y_3bh_Ocfaw/htmlview\")",
       "Bash(grep -oE '\"[^\"]{1,40}\"[[:space:]]*:[[:space:]]*\\\\{\"gid\"|switchSheet\\\\\\([0-9]+\\\\\\)|<li id=\"sheet-button-[0-9]+\"[^>]*>[^<]*')",
       "Bash(curl -s -L \"https://docs.google.com/spreadsheets/d/1pXh3KriF1L5yaB8K2ERCe9Kw5i6vOwm1y_3bh_Ocfaw/gviz/tq?tqx=out:csv&sheet=vaneck_NL0011683594\")",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(curl -s -L \"https://docs.google.com/spreadsheets/d/1pXh3KriF1L5yaB8K2ERCe9Kw5i6vOwm1y_3bh_Ocfaw/gviz/tq?tqx=out:csv&sheet=vaneck_NL0011683594_dividends\")"
     ]
   }
 }
