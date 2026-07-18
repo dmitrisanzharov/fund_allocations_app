@@ -15,11 +15,11 @@ function App() {
     const sevenDaysAgo = useMemo(() => dayjs().subtract(7, 'day'), []); // 10-Jul-2026
     const fiveYearsAgo = useMemo(() => sevenDaysAgo.subtract(5, 'year'), [sevenDaysAgo]);
 
-    console.log('============================');
+
+    // VANECK FUND start
+
     const vaneck_prices = useSheetData<PriceRow>(VANECK_PRICES_SHEET);
-    console.log("vaneck_prices: ", vaneck_prices.rows);
     const vaneck_dividends = useSheetData<DividendRow>(VANECK_DIVIDENDS_SHEET);
-    console.log("vaneck_dividends: ", vaneck_dividends.rows);
 
     const filteredVaneckPrices = useMemo(
         () => vaneck_prices.rows.filter((row) => isWithinRange(row.date, fiveYearsAgo, sevenDaysAgo)),
@@ -29,9 +29,6 @@ function App() {
         () => vaneck_dividends.rows.filter((row) => isWithinRange(row['Ex-Dividend Date'], fiveYearsAgo, sevenDaysAgo)),
         [vaneck_dividends.rows, fiveYearsAgo, sevenDaysAgo]
     );
-    console.log('filteredVaneckPrices', filteredVaneckPrices);
-    console.log('filteredVaneckDividends', filteredVaneckDividends);
-
     const vaneckPriceDifference = useMemo(() => {
         if (filteredVaneckPrices.length === 0) {
             return null;
@@ -49,14 +46,10 @@ function App() {
             differenceAsPercent: ((Number(newest.Price) / Number(oldest.Price))*100).toFixed(2),
         };
     }, [filteredVaneckPrices]);
-    console.log('vaneckPriceDifference', vaneckPriceDifference);
-
     const vaneckTotalDividends = useMemo(
         () => filteredVaneckDividends.reduce((total, row) => total + Number(row.Dividend), 0),
         [filteredVaneckDividends]
     );
-    console.log('vaneckTotalDividends', vaneckTotalDividends);
-
     const vaneckTotalValueIncludingDividends = useMemo(() => {
         if (!vaneckPriceDifference) {
             return null;
@@ -64,12 +57,18 @@ function App() {
 
         const newestPlusDividends = Number(vaneckPriceDifference.newest.Price) + vaneckTotalDividends;
 
+        const oldestPrice = Number(vaneckPriceDifference.oldest.Price);
+
         return {
             newestPlusDividends,
-            differenceAsPercent: ((newestPlusDividends / Number(vaneckPriceDifference.oldest.Price)) * 100).toFixed(2),
+            differenceAsPercent: ((newestPlusDividends / oldestPrice) * 100).toFixed(2),
+            correctDifferenceAsPercent: (((newestPlusDividends - oldestPrice) / oldestPrice) * 100).toFixed(2),
         };
     }, [vaneckPriceDifference, vaneckTotalDividends]);
-    console.log('vaneckTotalValueIncludingDividends', vaneckTotalValueIncludingDividends);
+
+    // VANECK FUND end
+
+    //* ****************************************************************************************************** */
 
     // console.log('============================');
     // const global_select_prices = useSheetData<PriceRow>(GLOBAL_SELECT_PRICES_SHEET);
@@ -83,10 +82,8 @@ function App() {
                 <Box>VanEck</Box>
                 <Box>oldest: {vaneckPriceDifference?.oldest.Price}</Box>
                 <Box>newest: {vaneckPriceDifference?.newest.Price}</Box>
-                <Box>difference: {vaneckPriceDifference?.differenceAsPercent}</Box>
                 <Box>total dividends: {vaneckTotalDividends.toFixed(2)}</Box>
-                <Box>newest + dividends: {vaneckTotalValueIncludingDividends?.newestPlusDividends.toFixed(2)}</Box>
-                <Box>difference including dividends: {vaneckTotalValueIncludingDividends?.differenceAsPercent}</Box>
+                <Box>correct % change including dividends: {vaneckTotalValueIncludingDividends?.correctDifferenceAsPercent}</Box>
             </Box>
             <Divider sx={{ my: 4 }} />
         </Box>
