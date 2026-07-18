@@ -65,6 +65,15 @@ function App() {
             correctDifferenceAsPercent: (((newestPlusDividends - oldestPrice) / oldestPrice) * 100).toFixed(2),
         };
     }, [vaneckPriceDifference, vaneckTotalDividends]);
+    const vaneckAverageDividendYield = useMemo(() => {
+        if (filteredVaneckDividends.length === 0) {
+            return null;
+        }
+
+        const total = filteredVaneckDividends.reduce((sum, row) => sum + parseFloat(row.Yield), 0);
+
+        return (total / filteredVaneckDividends.length).toFixed(2);
+    }, [filteredVaneckDividends]);
 
     // VANECK FUND end
 
@@ -79,11 +88,12 @@ function App() {
     return (
         <Box sx={{ p: 4 }}>
             <Box>
-                <Box>VanEck</Box>
+                <Box sx={{ textDecoration: 'underline', mb: 1 }}>VanEck</Box>
                 <Box>oldest: {vaneckPriceDifference?.oldest.Price}</Box>
                 <Box>newest: {vaneckPriceDifference?.newest.Price}</Box>
-                <Box>total dividends: {vaneckTotalDividends.toFixed(2)}</Box>
+                <Box sx={{ mb: 1}}>total dividends: {vaneckTotalDividends.toFixed(2)}</Box>
                 <Box>correct % change including dividends: {vaneckTotalValueIncludingDividends?.correctDifferenceAsPercent}</Box>
+                <Box>average dividend yield for this period: {vaneckAverageDividendYield}%</Box>
             </Box>
             <Divider sx={{ my: 4 }} />
         </Box>
