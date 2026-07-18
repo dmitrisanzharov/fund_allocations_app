@@ -2,7 +2,7 @@ import Papa from 'papaparse';
 
 const SHEET_ID = process.env.REACT_APP_GOOGLE_SHEET_ID;
 
-export interface PriceRow {
+export type PriceRow = {
     date: string;
     Price: string;
     Open: string;
@@ -10,15 +10,15 @@ export interface PriceRow {
     Low: string;
     'Vol.': string;
     'Change %': string;
-}
+};
 
-export interface DividendRow {
+export type DividendRow = {
     'Ex-Dividend Date': string;
     Dividend: string;
     Type: string;
     'Payment Date': string;
     Yield: string;
-}
+};
 
 export async function fetchSheetData<T = Record<string, string>>(
     sheetName?: string

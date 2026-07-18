@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useSheetData } from './hooks/useSheetData';
 import { SheetTable } from './components/SheetTable';
 import { DividendRow, PriceRow } from './services/googleSheets';
+import { isWithinRange } from './utils/dateRange';
 
 const VANECK_PRICES_SHEET = 'vaneck_NL0011683594';
 const VANECK_DIVIDENDS_SHEET = 'vaneck_NL0011683594_dividends';
@@ -19,6 +20,17 @@ function App() {
     const vaneck_dividends = useSheetData<DividendRow>(VANECK_DIVIDENDS_SHEET);
     console.log("vaneck_dividends: ", vaneck_dividends.rows);
 
+    const filteredVaneckPrices = useMemo(
+        () => vaneck_prices.rows.filter((row) => isWithinRange(row.date, fiveYearsAgo, sevenDaysAgo)),
+        [vaneck_prices.rows, fiveYearsAgo, sevenDaysAgo]
+    );
+    const filteredVaneckDividends = useMemo(
+        () => vaneck_dividends.rows.filter((row) => isWithinRange(row['Ex-Dividend Date'], fiveYearsAgo, sevenDaysAgo)),
+        [vaneck_dividends.rows, fiveYearsAgo, sevenDaysAgo]
+    );
+    console.log('filteredVaneckPrices', filteredVaneckPrices);
+    console.log('filteredVaneckDividends', filteredVaneckDividends);
+
     // console.log('============================');
     // const global_select_prices = useSheetData<PriceRow>(GLOBAL_SELECT_PRICES_SHEET);
     // console.log("global_select_prices: ", global_select_prices.rows);
@@ -27,6 +39,18 @@ function App() {
 
     return (
         <>
+            <SheetTable
+                title="Prices"
+                rows={filteredVaneckPrices}
+                loading={vaneck_prices.loading}
+                error={vaneck_prices.error}
+            />
+            <SheetTable
+                title="Dividends"
+                rows={filteredVaneckDividends}
+                loading={vaneck_dividends.loading}
+                error={vaneck_dividends.error}
+            />
         </>
     );
 }
