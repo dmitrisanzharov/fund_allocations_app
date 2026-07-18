@@ -44,6 +44,7 @@ export async function fetchSheetData<T = Record<string, string>>(
     const { data, errors } = Papa.parse<T>(csv, {
         header: true,
         skipEmptyLines: true,
+        transformHeader: (header) => (header === 'Date' ? 'date' : header),
     });
 
     if (errors.length > 0) {
