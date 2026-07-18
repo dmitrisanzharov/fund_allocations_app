@@ -11,7 +11,7 @@ const GLOBAL_SELECT_PRICES_SHEET = 'GlobalSelect_DE000A0F5UH1';
 const GLOBAL_SELECT_DIVIDENDS_SHEET = 'GlobalSelect_DE000A0F5UH1_dividends';
 
 function App() {
-    const sevenDaysAgo = useMemo(() => dayjs().subtract(7, 'day'), []);
+    const sevenDaysAgo = useMemo(() => dayjs().subtract(7, 'day'), []); // 10-Jul-2026
     const fiveYearsAgo = useMemo(() => sevenDaysAgo.subtract(5, 'year'), [sevenDaysAgo]);
 
     console.log('============================');
