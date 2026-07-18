@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import { useMemo } from 'react';
+import { Box, Divider } from '@mui/material';
 import { useSheetData } from './hooks/useSheetData';
 import { SheetTable } from './components/SheetTable';
 import { DividendRow, PriceRow } from './services/googleSheets';
@@ -31,6 +32,25 @@ function App() {
     console.log('filteredVaneckPrices', filteredVaneckPrices);
     console.log('filteredVaneckDividends', filteredVaneckDividends);
 
+    const vaneckPriceDifference = useMemo(() => {
+        if (filteredVaneckPrices.length === 0) {
+            return null;
+        }
+
+        const sortedByDate = [...filteredVaneckPrices].sort(
+            (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
+        );
+        const oldest = sortedByDate[0];
+        const newest = sortedByDate[sortedByDate.length - 1];
+
+        return {
+            oldest,
+            newest,
+            differenceAsPercent: ((Number(newest.Price) / Number(oldest.Price))*100).toFixed(2),
+        };
+    }, [filteredVaneckPrices]);
+    console.log('vaneckPriceDifference', vaneckPriceDifference);
+
     // console.log('============================');
     // const global_select_prices = useSheetData<PriceRow>(GLOBAL_SELECT_PRICES_SHEET);
     // console.log("global_select_prices: ", global_select_prices.rows);
@@ -38,20 +58,15 @@ function App() {
     // console.log("global_select_dividends: ", global_select_dividends.rows);
 
     return (
-        <>
-            <SheetTable
-                title="Prices"
-                rows={filteredVaneckPrices}
-                loading={vaneck_prices.loading}
-                error={vaneck_prices.error}
-            />
-            <SheetTable
-                title="Dividends"
-                rows={filteredVaneckDividends}
-                loading={vaneck_dividends.loading}
-                error={vaneck_dividends.error}
-            />
-        </>
+        <Box sx={{ p: 4 }}>
+            <Box>
+                <Box>VanEck</Box>
+                <Box>oldest: {vaneckPriceDifference?.oldest.Price}</Box>
+                <Box>newest: {vaneckPriceDifference?.newest.Price}</Box>
+                <Box>difference: {vaneckPriceDifference?.differenceAsPercent}</Box>
+            </Box>
+            <Divider sx={{ my: 4 }} />
+        </Box>
     );
 }
 
