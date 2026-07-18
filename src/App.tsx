@@ -51,6 +51,26 @@ function App() {
     }, [filteredVaneckPrices]);
     console.log('vaneckPriceDifference', vaneckPriceDifference);
 
+    const vaneckTotalDividends = useMemo(
+        () => filteredVaneckDividends.reduce((total, row) => total + Number(row.Dividend), 0),
+        [filteredVaneckDividends]
+    );
+    console.log('vaneckTotalDividends', vaneckTotalDividends);
+
+    const vaneckTotalValueIncludingDividends = useMemo(() => {
+        if (!vaneckPriceDifference) {
+            return null;
+        }
+
+        const newestPlusDividends = Number(vaneckPriceDifference.newest.Price) + vaneckTotalDividends;
+
+        return {
+            newestPlusDividends,
+            differenceAsPercent: ((newestPlusDividends / Number(vaneckPriceDifference.oldest.Price)) * 100).toFixed(2),
+        };
+    }, [vaneckPriceDifference, vaneckTotalDividends]);
+    console.log('vaneckTotalValueIncludingDividends', vaneckTotalValueIncludingDividends);
+
     // console.log('============================');
     // const global_select_prices = useSheetData<PriceRow>(GLOBAL_SELECT_PRICES_SHEET);
     // console.log("global_select_prices: ", global_select_prices.rows);
@@ -64,6 +84,9 @@ function App() {
                 <Box>oldest: {vaneckPriceDifference?.oldest.Price}</Box>
                 <Box>newest: {vaneckPriceDifference?.newest.Price}</Box>
                 <Box>difference: {vaneckPriceDifference?.differenceAsPercent}</Box>
+                <Box>total dividends: {vaneckTotalDividends.toFixed(2)}</Box>
+                <Box>newest + dividends: {vaneckTotalValueIncludingDividends?.newestPlusDividends.toFixed(2)}</Box>
+                <Box>difference including dividends: {vaneckTotalValueIncludingDividends?.differenceAsPercent}</Box>
             </Box>
             <Divider sx={{ my: 4 }} />
         </Box>
