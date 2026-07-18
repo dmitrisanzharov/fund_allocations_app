@@ -2,6 +2,24 @@ import Papa from 'papaparse';
 
 const SHEET_ID = process.env.REACT_APP_GOOGLE_SHEET_ID;
 
+export type PriceRow = {
+    date: string;
+    Price: string;
+    Open: string;
+    High: string;
+    Low: string;
+    'Vol.': string;
+    'Change %': string;
+};
+
+export type DividendRow = {
+    'Ex-Dividend Date': string;
+    Dividend: string;
+    Type: string;
+    'Payment Date': string;
+    Yield: string;
+};
+
 export async function fetchSheetData<T = Record<string, string>>(
     sheetName?: string
 ): Promise<T[]> {
@@ -26,6 +44,7 @@ export async function fetchSheetData<T = Record<string, string>>(
     const { data, errors } = Papa.parse<T>(csv, {
         header: true,
         skipEmptyLines: true,
+        transformHeader: (header) => (header === 'Date' ? 'date' : header),
     });
 
     if (errors.length > 0) {
