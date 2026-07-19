@@ -5,6 +5,8 @@ import { DividendRow, PriceRow } from '../services/googleSheets';
 import { isWithinRange } from '../utils/dateRange';
 
 export interface FundSummary {
+    name: string;
+    isin: string;
     loading: boolean;
     error: string | null;
     oldest: PriceRow | null;
@@ -16,6 +18,8 @@ export interface FundSummary {
 }
 
 export function useFundSummary(
+    name: string,
+    isin: string,
     pricesSheet: string,
     dividendsSheet: string,
     start: Dayjs,
@@ -81,6 +85,8 @@ export function useFundSummary(
 
     // return summary
     return {
+        name,
+        isin,
         loading: prices.loading || dividends.loading,
         error: prices.error ?? dividends.error,
         oldest: priceDifference?.oldest ?? null,

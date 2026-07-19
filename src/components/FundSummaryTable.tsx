@@ -9,13 +9,10 @@ import {
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 
-interface FundSummaryRow extends FundSummary {
-    name: string;
-}
-
-const columnHelper = createColumnHelper<FundSummaryRow>();
+const columnHelper = createColumnHelper<FundSummary>();
 
 const columns = [
+    columnHelper.accessor('isin', { header: 'ISIN' }),
     columnHelper.accessor('name', { header: 'Fund' }),
     columnHelper.accessor((row) => row.oldest?.Price, { id: 'oldest', header: 'Oldest Price' }),
     columnHelper.accessor((row) => row.newest?.Price, { id: 'newest', header: 'Newest Price' }),
@@ -31,7 +28,7 @@ const columns = [
 ];
 
 interface FundSummaryTableProps {
-    funds: FundSummaryRow[];
+    funds: FundSummary[];
 }
 
 export function FundSummaryTable({ funds }: FundSummaryTableProps) {
