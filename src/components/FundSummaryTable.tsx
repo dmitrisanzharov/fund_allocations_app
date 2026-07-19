@@ -47,9 +47,9 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
             <Table>
                 <TableHead>
                     {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id}>
+                        <TableRow key={headerGroup.id} sx={{ backgroundColor: 'lightgray' }}>
                             {headerGroup.headers.map((header) => (
-                                <TableCell key={header.id}>
+                                <TableCell key={header.id} sx={{ fontWeight: 'bold' }}>
                                     {flexRender(header.column.columnDef.header, header.getContext())}
                                 </TableCell>
                             ))}
