@@ -15,7 +15,10 @@ const GLOBAL_SELECT_DIVIDENDS_SHEET = 'GlobalSelect_DE000A0F5UH1_dividends';
 
 function App() {
     const lastWeekWednesday = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
-    const fiveYearsAgo = useMemo(() => lastWeekWednesday.subtract(5, 'year'), [lastWeekWednesday]);
+    const fiveYearsAgo = useMemo(
+        () => lastWeekWednesday.subtract(5, 'year').startOf('day'),
+        [lastWeekWednesday]
+    );
 
     // funds
     const vaneckIdentifier = parseFundSheetName(VANECK_PRICES_SHEET);
