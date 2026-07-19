@@ -4,8 +4,7 @@ import { Box } from '@mui/material';
 import { useFundSummary } from './hooks/useFundSummary';
 import { FundSummaryTable } from './components/FundSummaryTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
-
-const TODAY_TIMESTAMP = '2026-07-11T17:00:00.780Z';
+import { TODAY_TIMESTAMP } from './App';
 
 const VANECK_PRICES_SHEET = 'vaneck_NL0011683594';
 const VANECK_DIVIDENDS_SHEET = 'vaneck_NL0011683594_dividends';
@@ -18,11 +17,11 @@ const VANECK_FINAL_OBJECT_MOCK = {
     isin: 'NL0011683594',
     loading: false || true, // typeOf boolean
     error: 'error message', // typeOf string or null
-    newestPrice: 52.95,
-    oldestPrice: 123,
-    totalDividends: 789,
-    correctDifferenceAsPercent: '10%',
-    averageDividendYield: '5%'
+    newestPrice: 53.6,
+    oldestPrice: 28.88,
+    totalDividends: 8.01,
+    correctDifferenceAsPercent: '113.33%',
+    averageDividendYield: '4.03%'
 }
 
 function AppManualTest() {

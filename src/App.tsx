@@ -6,7 +6,7 @@ import { FundSummaryTable } from './components/FundSummaryTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
 import AppManualTest from './AppManualTest';
 
-const TODAY_TIMESTAMP = '2026-07-11T14:54:09.780Z';
+export const TODAY_TIMESTAMP = '2026-07-15T18:00:00.780Z';
 
 const VANECK_PRICES_SHEET = 'vaneck_NL0011683594';
 const VANECK_DIVIDENDS_SHEET = 'vaneck_NL0011683594_dividends';
