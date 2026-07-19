@@ -3,6 +3,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { useSheetData } from './useSheetData';
 import { DividendRow, PriceRow } from '../services/googleSheets';
 import { isWithinRange } from '../utils/dateRange';
+import { calculateAnnualizedReturn, calculateAnnualizedVolatility, calculateReturnPerRisk } from '../utils/riskMetrics';
 
 export interface FundSummary {
     name: string;
@@ -15,6 +16,7 @@ export interface FundSummary {
     newestPlusDividends: number | null;
     correctDifferenceAsPercent: string | null;
     averageDividendYield: string | null;
+    returnPerRisk: string | null;
 }
 
 export function useFundSummary(
@@ -28,7 +30,7 @@ export function useFundSummary(
 ): FundSummary {
     const prices = useSheetData<PriceRow>(pricesSheet); // this is price sheet data
     const dividends = useSheetData<DividendRow>(dividendsSheet); // this is dividends sheet data
-    const netOfTaxFactor = 1 - (taxRate ?? 0);
+    const netOfTaxFactor = 1 - (taxRate ?? 0); // this is if fund is taxed
 
     // filter by date, i.e. last 5 years and NOW is (today - 7 days)
     const filteredPrices = useMemo(
@@ -40,18 +42,19 @@ export function useFundSummary(
         [dividends.rows, start, end]
     );
 
+    const sortedPrices = useMemo(
+        () => [...filteredPrices].sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()),
+        [filteredPrices]
+    );
+
     // oldest is 'starting' value and newest is 'ending' value, so we can calculate 'how much it grew' in 5 years
     const priceDifference = useMemo(() => {
-        if (filteredPrices.length === 0) {
+        if (sortedPrices.length === 0) {
             return null;
         }
 
-        const sortedByDate = [...filteredPrices].sort(
-            (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
-        );
-
-        return { oldest: sortedByDate[0], newest: sortedByDate[sortedByDate.length - 1] };
-    }, [filteredPrices]);
+        return { oldest: sortedPrices[0], newest: sortedPrices[sortedPrices.length - 1] };
+    }, [sortedPrices]);
 
     // calculate total dividends for the 5 year period, net of tax
     const totalDividends = useMemo(
@@ -85,6 +88,26 @@ export function useFundSummary(
         return (total / filteredDividends.length).toFixed(2);
     }, [filteredDividends, netOfTaxFactor]);
 
+    // annualized total return (incl. dividends) divided by annualized volatility of daily prices
+    const returnPerRisk = useMemo(() => {
+        if (!priceDifference || !totalValueIncludingDividends || sortedPrices.length < 3) {
+            return null;
+        }
+
+        const years = dayjs(priceDifference.newest.date).diff(priceDifference.oldest.date, 'day') / 365.25;
+        const annualizedReturn = calculateAnnualizedReturn(
+            Number(priceDifference.oldest.Price),
+            totalValueIncludingDividends.newestPlusDividends,
+            years
+        );
+        const annualizedVolatility = calculateAnnualizedVolatility(
+            sortedPrices.map((row) => Number(row.Price))
+        );
+        const ratio = calculateReturnPerRisk(annualizedReturn, annualizedVolatility);
+
+        return ratio !== null ? ratio.toFixed(2) : null;
+    }, [priceDifference, totalValueIncludingDividends, sortedPrices]);
+
     // return summary
     return {
         name,
@@ -97,5 +120,6 @@ export function useFundSummary(
         newestPlusDividends: totalValueIncludingDividends?.newestPlusDividends ?? null,
         correctDifferenceAsPercent: totalValueIncludingDividends?.correctDifferenceAsPercent ?? null,
         averageDividendYield,
+        returnPerRisk,
     };
 }

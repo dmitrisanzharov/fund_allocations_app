@@ -25,6 +25,10 @@ const columns = [
         id: 'averageYield',
         header: 'Avg Dividend Yield %',
     }),
+    columnHelper.accessor((row) => row.returnPerRisk, {
+        id: 'returnPerRisk',
+        header: 'Return per Risk',
+    }),
 ];
 
 interface FundSummaryTableProps {
