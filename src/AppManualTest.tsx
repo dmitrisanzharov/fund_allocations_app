@@ -5,12 +5,9 @@ import { useFundSummary } from './hooks/useFundSummary';
 import { ComparisonTable } from './components/ComparisonTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
 import { FundSummaryMock, buildFundComparisonRows } from './utils/compareFundSummary';
-import { TODAY_TIMESTAMP } from './App';
+import { TODAY_TIMESTAMP, VANECK_PRICES_SHEET, VANECK_DIVIDENDS_SHEET, GLOBAL_SELECT_PRICES_SHEET, GLOBAL_SELECT_DIVIDENDS_SHEET } from './App';
 
-const VANECK_PRICES_SHEET = 'vaneck_NL0011683594';
-const VANECK_DIVIDENDS_SHEET = 'vaneck_NL0011683594_dividends';
-const GLOBAL_SELECT_PRICES_SHEET = 'GlobalSelect_DE000A0F5UH1';
-const GLOBAL_SELECT_DIVIDENDS_SHEET = 'GlobalSelect_DE000A0F5UH1_dividends';
+const lastDateOfTestThatPassed = '2026-07-19T15:13:00.780Z';
 
 const VANECK_FINAL_OBJECT_SHOULD_BE: FundSummaryMock = {
     name: 'vaneck',
