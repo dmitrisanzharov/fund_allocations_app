@@ -4,14 +4,15 @@ import { Box, Divider } from '@mui/material';
 import { useFundSummary } from './hooks/useFundSummary';
 import { FundSummaryTable } from './components/FundSummaryTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
-import AppManualTest from './AppManualTest';
 
 export const TODAY_TIMESTAMP = '2026-07-15T18:00:00.780Z';
 
-const VANECK_PRICES_SHEET = 'vaneck_NL0011683594';
-const VANECK_DIVIDENDS_SHEET = 'vaneck_NL0011683594_dividends';
-const GLOBAL_SELECT_PRICES_SHEET = 'GlobalSelect_DE000A0F5UH1';
-const GLOBAL_SELECT_DIVIDENDS_SHEET = 'GlobalSelect_DE000A0F5UH1_dividends';
+export const VANECK_PRICES_SHEET = 'vaneck_NL0011683594';
+export const VANECK_DIVIDENDS_SHEET = 'vaneck_NL0011683594_div';
+export const GLOBAL_SELECT_PRICES_SHEET = 'GlobalSelect_DE000A0F5UH1';
+export const GLOBAL_SELECT_DIVIDENDS_SHEET = 'GlobalSelect_DE000A0F5UH1_div';
+export const VANGUARD_PRICES_SHEET = 'VanGuard_IE00B8GKDB10';
+export const VANGUARD_DIVIDENDS_SHEET = 'VanGuard_IE00B8GKDB10_div';
 
 function App() {
     const lastWeekWednesday = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
@@ -42,13 +43,21 @@ function App() {
         lastWeekWednesday
     );
 
-    const funds = useMemo(() => [vaneck, globalSelect], [vaneck, globalSelect]);
+    const vanguardIdentifier = parseFundSheetName(VANGUARD_PRICES_SHEET);
+    const vanguard = useFundSummary(
+        vanguardIdentifier.name,
+        vanguardIdentifier.isin,
+        VANGUARD_PRICES_SHEET,
+        VANGUARD_DIVIDENDS_SHEET,
+        fiveYearsAgo,
+        lastWeekWednesday
+    );
+
+    const funds = useMemo(() => [vaneck, globalSelect, vanguard], [vaneck, globalSelect, vanguard]);
 
     return (
         <Box sx={{ p: 4 }}>
             <FundSummaryTable funds={funds} />
-            {/* <Divider orientation="horizontal" sx={{ my: 4 }} />
-            <AppManualTest /> */}
         </Box>
     );
 }
