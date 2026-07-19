@@ -28,7 +28,8 @@ function App() {
         VANECK_PRICES_SHEET,
         VANECK_DIVIDENDS_SHEET,
         fiveYearsAgo,
-        lastWeekWednesday
+        lastWeekWednesday,
+        0.15
     );
 
     const globalSelectIdentifier = parseFundSheetName(GLOBAL_SELECT_PRICES_SHEET);
@@ -46,8 +47,8 @@ function App() {
     return (
         <Box sx={{ p: 4 }}>
             <FundSummaryTable funds={funds} />
-            <Divider orientation="horizontal" sx={{ my: 4 }} />
-            <AppManualTest />
+            {/* <Divider orientation="horizontal" sx={{ my: 4 }} />
+            <AppManualTest /> */}
         </Box>
     );
 }

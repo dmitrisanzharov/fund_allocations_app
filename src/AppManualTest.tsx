@@ -7,6 +7,8 @@ import { parseFundSheetName } from './utils/fundIdentifier';
 import { FundSummaryMock, buildFundComparisonRows } from './utils/compareFundSummary';
 import { TODAY_TIMESTAMP } from './App';
 
+const lastDateOfTestThatPassed = '2026-07-19T15:13:00.780Z';
+
 const VANECK_PRICES_SHEET = 'vaneck_NL0011683594';
 const VANECK_DIVIDENDS_SHEET = 'vaneck_NL0011683594_dividends';
 const GLOBAL_SELECT_PRICES_SHEET = 'GlobalSelect_DE000A0F5UH1';

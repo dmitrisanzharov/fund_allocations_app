@@ -23,10 +23,12 @@ export function useFundSummary(
     pricesSheet: string,
     dividendsSheet: string,
     start: Dayjs,
-    end: Dayjs
+    end: Dayjs,
+    taxRate?: number
 ): FundSummary {
     const prices = useSheetData<PriceRow>(pricesSheet); // this is price sheet data
     const dividends = useSheetData<DividendRow>(dividendsSheet); // this is dividends sheet data
+    const netOfTaxFactor = 1 - (taxRate ?? 0);
 
     // filter by date, i.e. last 5 years and NOW is (today - 7 days)
     const filteredPrices = useMemo(
@@ -51,10 +53,10 @@ export function useFundSummary(
         return { oldest: sortedByDate[0], newest: sortedByDate[sortedByDate.length - 1] };
     }, [filteredPrices]);
 
-    // calculate total dividends for the 5 year period
+    // calculate total dividends for the 5 year period, net of tax
     const totalDividends = useMemo(
-        () => filteredDividends.reduce((total, row) => total + Number(row.Dividend), 0),
-        [filteredDividends]
+        () => filteredDividends.reduce((total, row) => total + Number(row.Dividend) * netOfTaxFactor, 0),
+        [filteredDividends, netOfTaxFactor]
     );
 
     // calculate growth in 5 years including dividends
@@ -72,16 +74,16 @@ export function useFundSummary(
         };
     }, [priceDifference, totalDividends]);
 
-    // here we take filteredDividends data, take 'yield' column and calculate average
+    // here we take filteredDividends data, take 'yield' column and calculate average, net of tax
     const averageDividendYield = useMemo(() => {
         if (filteredDividends.length === 0) {
             return null;
         }
 
-        const total = filteredDividends.reduce((sum, row) => sum + parseFloat(row.Yield), 0);
+        const total = filteredDividends.reduce((sum, row) => sum + parseFloat(row.Yield) * netOfTaxFactor, 0);
 
         return (total / filteredDividends.length).toFixed(2);
-    }, [filteredDividends]);
+    }, [filteredDividends, netOfTaxFactor]);
 
     // return summary
     return {
