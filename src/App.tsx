@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Box } from '@mui/material';
 import { useFundSummary } from './hooks/useFundSummary';
 import { FundSummaryTable } from './components/FundSummaryTable';
+import { parseFundSheetName } from './utils/fundIdentifier';
 
 const TODAY_TIMESTAMP = '2026-07-11T14:54:09.780Z';
 
@@ -15,21 +16,28 @@ function App() {
     const sevenDaysAgo = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
     const fiveYearsAgo = useMemo(() => sevenDaysAgo.subtract(5, 'year'), [sevenDaysAgo]);
 
-    const vaneck = useFundSummary(VANECK_PRICES_SHEET, VANECK_DIVIDENDS_SHEET, fiveYearsAgo, sevenDaysAgo);
+    // funds
+    const vaneckIdentifier = parseFundSheetName(VANECK_PRICES_SHEET);
+    const vaneck = useFundSummary(
+        vaneckIdentifier.name,
+        vaneckIdentifier.isin,
+        VANECK_PRICES_SHEET,
+        VANECK_DIVIDENDS_SHEET,
+        fiveYearsAgo,
+        sevenDaysAgo
+    );
+
+    const globalSelectIdentifier = parseFundSheetName(GLOBAL_SELECT_PRICES_SHEET);
     const globalSelect = useFundSummary(
+        globalSelectIdentifier.name,
+        globalSelectIdentifier.isin,
         GLOBAL_SELECT_PRICES_SHEET,
         GLOBAL_SELECT_DIVIDENDS_SHEET,
         fiveYearsAgo,
         sevenDaysAgo
     );
 
-    const funds = useMemo(
-        () => [
-            { name: 'VanEck', ...vaneck },
-            { name: 'GlobalSelect', ...globalSelect },
-        ],
-        [vaneck, globalSelect]
-    );
+    const funds = useMemo(() => [vaneck, globalSelect], [vaneck, globalSelect]);
 
     return (
         <Box sx={{ p: 4 }}>
