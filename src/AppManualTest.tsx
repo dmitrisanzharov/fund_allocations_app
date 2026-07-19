@@ -26,8 +26,8 @@ const VANECK_FINAL_OBJECT_MOCK = {
 }
 
 function AppManualTest() {
-    const sevenDaysAgo = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
-    const fiveYearsAgo = useMemo(() => sevenDaysAgo.subtract(5, 'year'), [sevenDaysAgo]);
+    const lastWeekWednesday = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
+    const fiveYearsAgo = useMemo(() => lastWeekWednesday.subtract(5, 'year'), [lastWeekWednesday]);
 
     // funds
     const vaneckIdentifier = parseFundSheetName(VANECK_PRICES_SHEET);
@@ -37,7 +37,7 @@ function AppManualTest() {
         VANECK_PRICES_SHEET,
         VANECK_DIVIDENDS_SHEET,
         fiveYearsAgo,
-        sevenDaysAgo
+        lastWeekWednesday
     );
     console.log('vaneck', vaneck);
 
@@ -48,7 +48,7 @@ function AppManualTest() {
         GLOBAL_SELECT_PRICES_SHEET,
         GLOBAL_SELECT_DIVIDENDS_SHEET,
         fiveYearsAgo,
-        sevenDaysAgo
+        lastWeekWednesday
     );
 
     const funds = useMemo(() => [vaneck, globalSelect], [vaneck, globalSelect]);

@@ -14,8 +14,8 @@ const GLOBAL_SELECT_PRICES_SHEET = 'GlobalSelect_DE000A0F5UH1';
 const GLOBAL_SELECT_DIVIDENDS_SHEET = 'GlobalSelect_DE000A0F5UH1_dividends';
 
 function App() {
-    const sevenDaysAgo = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
-    const fiveYearsAgo = useMemo(() => sevenDaysAgo.subtract(5, 'year'), [sevenDaysAgo]);
+    const lastWeekWednesday = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
+    const fiveYearsAgo = useMemo(() => lastWeekWednesday.subtract(5, 'year'), [lastWeekWednesday]);
 
     // funds
     const vaneckIdentifier = parseFundSheetName(VANECK_PRICES_SHEET);
@@ -25,7 +25,7 @@ function App() {
         VANECK_PRICES_SHEET,
         VANECK_DIVIDENDS_SHEET,
         fiveYearsAgo,
-        sevenDaysAgo
+        lastWeekWednesday
     );
 
     const globalSelectIdentifier = parseFundSheetName(GLOBAL_SELECT_PRICES_SHEET);
@@ -35,7 +35,7 @@ function App() {
         GLOBAL_SELECT_PRICES_SHEET,
         GLOBAL_SELECT_DIVIDENDS_SHEET,
         fiveYearsAgo,
-        sevenDaysAgo
+        lastWeekWednesday
     );
 
     const funds = useMemo(() => [vaneck, globalSelect], [vaneck, globalSelect]);
