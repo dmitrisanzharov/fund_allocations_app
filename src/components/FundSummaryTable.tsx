@@ -1,13 +1,5 @@
 import { useMemo } from 'react';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Tooltip,
-} from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 
@@ -32,16 +24,16 @@ const columns = [
     columnHelper.accessor((row) => row.totalDividends.toFixed(2), { id: 'totalDividends', header: 'Total Dividends' }),
     columnHelper.accessor((row) => row.correctDifferenceAsPercent, {
         id: 'totalReturn',
-        header: 'Total Return %',
+        header: 'Total Return %'
     }),
     columnHelper.accessor((row) => row.averageDividendYield, {
         id: 'averageYield',
-        header: 'Avg Dividend Yield %',
+        header: 'Avg Dividend Yield %'
     }),
     columnHelper.accessor((row) => row.returnPerRisk, {
         id: 'returnPerRisk',
-        header: 'Return per Risk',
-    }),
+        header: 'Return per Risk'
+    })
 ];
 
 interface FundSummaryTableProps {
@@ -52,14 +44,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
     const table = useReactTable({
         data: funds,
         columns,
-        getCoreRowModel: getCoreRowModel(),
+        getCoreRowModel: getCoreRowModel()
     });
 
     const columnAverages = useMemo(
         () => ({
             totalReturn: averageOf(funds.map((fund) => fund.correctDifferenceAsPercent)),
             averageYield: averageOf(funds.map((fund) => fund.averageDividendYield)),
-            returnPerRisk: averageOf(funds.map((fund) => fund.returnPerRisk)),
+            returnPerRisk: averageOf(funds.map((fund) => fund.returnPerRisk))
         }),
         [funds]
     );
@@ -71,18 +63,15 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     <TableRow sx={{ backgroundColor: 'lightgray' }}>
                         {table.getFlatHeaders().map((header) => {
                             const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
-                            const value = isAveraged
-                                ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]] ?? ''
-                                : '';
+                            const value =
+                                isAveraged && columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]];
 
                             return (
                                 <TableCell key={header.id} sx={{ fontWeight: 'bold' }}>
-                                    {isAveraged ? (
-                                        <Tooltip title="average for column" placement="top">
+                                    {isAveraged && (
+                                        <Tooltip title='average for column' placement='top'>
                                             <span>{value}</span>
                                         </Tooltip>
-                                    ) : (
-                                        value
                                     )}
                                 </TableCell>
                             );
