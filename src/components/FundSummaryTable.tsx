@@ -8,6 +8,14 @@ const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as 
 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
+const ALLOCATION_HEADER_BACKGROUND = 'darkgoldenrod';
+
+const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
+    totalReturn: AVERAGED_HEADER_BACKGROUND,
+    averageYield: AVERAGED_HEADER_BACKGROUND,
+    returnPerRisk: AVERAGED_HEADER_BACKGROUND,
+    allocation: ALLOCATION_HEADER_BACKGROUND
+};
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
     totalReturn: 1.5,
@@ -143,6 +151,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
                         {table.getFlatHeaders().map((header) => {
                             const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
+                            const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                             const value =
                                 isAveraged && columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]];
 
@@ -151,7 +160,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                     key={header.id}
                                     sx={{
                                         fontWeight: 'bold',
-                                        backgroundColor: isAveraged ? AVERAGED_HEADER_BACKGROUND : undefined
+                                        backgroundColor: highlightBackground
                                     }}
                                 >
                                     {isAveraged && (
@@ -169,16 +178,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
                             {headerGroup.headers.map((header) => {
-                                const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(
-                                    header.column.id
-                                );
+                                const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
 
                                 return (
                                     <TableCell
                                         key={header.id}
                                         sx={{
                                             fontWeight: 'bold',
-                                            backgroundColor: isAveraged ? AVERAGED_HEADER_BACKGROUND : undefined
+                                            backgroundColor: highlightBackground
                                         }}
                                     >
                                         {flexRender(header.column.columnDef.header, header.getContext())}
