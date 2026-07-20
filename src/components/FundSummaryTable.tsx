@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material';
+import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 
@@ -130,7 +131,10 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                 >
                                     {isAveraged && (
                                         <Tooltip title='average for column' placement='top'>
-                                            <span>{value}</span>
+                                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                                                <span>{value}</span>
+                                                <InfoOutlinedIcon fontSize='small' />
+                                            </Box>
                                         </Tooltip>
                                     )}
                                 </TableCell>
