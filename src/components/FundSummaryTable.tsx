@@ -46,6 +46,17 @@ const SCORE_COLUMN_CONFIG: Record<
     returnPerRisk: { getValue: (row) => row.returnPerRisk, header: 'Return per Risk Score' }
 };
 
+function calculateFundScore(
+    row: FundSummary,
+    columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>
+): string | null {
+    const scores = AVERAGED_COLUMN_IDS.map((id) =>
+        calculateRawScore(SCORE_COLUMN_CONFIG[id].getValue(row), columnAverages[id], COLUMN_WEIGHTS[id])
+    ).filter((score): score is number => score !== null);
+
+    return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0).toFixed(2);
+}
+
 const columnHelper = createColumnHelper<FundSummary>();
 
 const baseColumns = [
@@ -82,6 +93,15 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         [funds]
     );
 
+    const totalFundScore = useMemo(() => {
+        const scores = funds
+            .map((fund) => calculateFundScore(fund, columnAverages))
+            .filter((score): score is string => score !== null)
+            .map(Number);
+
+        return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0);
+    }, [funds, columnAverages]);
+
     const columns = useMemo(
         () => [
             ...baseColumns,
@@ -91,18 +111,23 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     { id: `${id}Score`, header: SCORE_COLUMN_CONFIG[id].header }
                 )
             ),
+            columnHelper.accessor((row) => calculateFundScore(row, columnAverages), {
+                id: 'fundScore',
+                header: 'Fund Score'
+            }),
             columnHelper.accessor(
                 (row) => {
-                    const scores = AVERAGED_COLUMN_IDS.map((id) =>
-                        calculateRawScore(SCORE_COLUMN_CONFIG[id].getValue(row), columnAverages[id], COLUMN_WEIGHTS[id])
-                    ).filter((score): score is number => score !== null);
+                    const score = calculateFundScore(row, columnAverages);
+                    if (score === null || totalFundScore === null || totalFundScore === 0) {
+                        return null;
+                    }
 
-                    return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0).toFixed(2);
+                    return ((Number(score) / totalFundScore) * 100).toFixed(2);
                 },
-                { id: 'fundScore', header: 'Fund Score' }
+                { id: 'allocation', header: 'Allocation %' }
             )
         ],
-        [columnAverages]
+        [columnAverages, totalFundScore]
     );
 
     const table = useReactTable({
