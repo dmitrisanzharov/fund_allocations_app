@@ -3,6 +3,9 @@ import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
+import { FUND_TIER_OBJ, FundTierKey } from '../constants';
+
+type FundRow = FundSummary & { tier: FundTierKey };
 
 const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as const;
 
@@ -74,6 +77,24 @@ function calculateFundScore(
     return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0).toFixed(2);
 }
 
+function calculateTierScoreSums(
+    funds: FundRow[],
+    columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>
+): Partial<Record<FundTierKey, number>> {
+    const sums: Partial<Record<FundTierKey, number>> = {};
+
+    funds.forEach((fund) => {
+        const score = calculateFundScore(fund, columnAverages);
+        if (score === null) {
+            return;
+        }
+
+        sums[fund.tier] = (sums[fund.tier] ?? 0) + Number(score);
+    });
+
+    return sums;
+}
+
 function calculateAllocation(
     row: FundSummary,
     columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
@@ -87,9 +108,37 @@ function calculateAllocation(
     return ((Number(score) / totalFundScore) * 100).toFixed(2);
 }
 
-const columnHelper = createColumnHelper<FundSummary>();
+function calculateFinalAllocation(
+    row: FundRow,
+    columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
+    tierScoreSums: Partial<Record<FundTierKey, number>>
+): string | null {
+    const score = calculateFundScore(row, columnAverages);
+    const tierMax = tierScoreSums[row.tier];
+    if (score === null || tierMax === undefined || tierMax === 0) {
+        return null;
+    }
+
+    const maxAllocation = FUND_TIER_OBJ[row.tier].maxAllocation;
+
+    return ((Number(score) / tierMax) * maxAllocation * 100).toFixed(2);
+}
+
+const columnHelper = createColumnHelper<FundRow>();
 
 const baseColumns = [
+    columnHelper.accessor('tier', {
+        header: 'Tier',
+        cell: (info) => {
+            const tierInfo = FUND_TIER_OBJ[info.getValue()];
+
+            return (
+                <Tooltip title={tierInfo.longName} placement='top'>
+                    <span>{tierInfo.shortName}</span>
+                </Tooltip>
+            );
+        }
+    }),
     columnHelper.accessor('isin', { header: 'ISIN' }),
     columnHelper.accessor('name', { header: 'Fund' }),
     columnHelper.accessor((row) => row.oldest?.Price, { id: 'oldest', header: 'Oldest Price' }),
@@ -110,7 +159,7 @@ const baseColumns = [
 ];
 
 interface FundSummaryTableProps {
-    funds: FundSummary[];
+    funds: FundRow[];
 }
 
 export function FundSummaryTable({ funds }: FundSummaryTableProps) {
@@ -132,6 +181,8 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0);
     }, [funds, columnAverages]);
 
+    const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
+
     const columns = useMemo(
         () => [
             ...baseColumns,
@@ -148,9 +199,21 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
             columnHelper.accessor((row) => calculateAllocation(row, columnAverages, totalFundScore), {
                 id: 'allocation',
                 header: 'Allocation %'
+            }),
+            columnHelper.accessor((row) => (FUND_TIER_OBJ[row.tier].maxAllocation * 100).toFixed(2), {
+                id: 'maxAllocation',
+                header: 'Max Allocation %'
+            }),
+            columnHelper.accessor((row) => tierScoreSums[row.tier]?.toFixed(2) ?? null, {
+                id: 'tierMax',
+                header: 'Tier Max'
+            }),
+            columnHelper.accessor((row) => calculateFinalAllocation(row, columnAverages, tierScoreSums), {
+                id: 'finalAllocation',
+                header: 'Final Allocation %'
             })
         ],
-        [columnAverages, totalFundScore]
+        [columnAverages, totalFundScore, tierScoreSums]
     );
 
     const allocationSum = useMemo(

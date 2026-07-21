@@ -108,7 +108,15 @@ function App() {
     );
 
     const funds = useMemo(
-        () => [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk],
+        () => [
+            { ...vaneck, tier: vaneckConfig.tier },
+            { ...globalSelect, tier: globalSelectConfig.tier },
+            { ...vanguard, tier: vanguardConfig.tier },
+            { ...invescoEu, tier: invescoEuConfig.tier },
+            { ...ishareEuSelect, tier: ishareEuSelectConfig.tier },
+            { ...ishareEuBank, tier: ishareEuBankConfig.tier },
+            { ...ishareUk, tier: ishareUkConfig.tier }
+        ],
         [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk]
     );
 

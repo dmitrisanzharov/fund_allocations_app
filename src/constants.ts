@@ -18,11 +18,13 @@ export const FUND_TIER_OBJ = {
 
 export const TODAY_TIMESTAMP = '2026-07-15T18:00:00.780Z';
 
+export type FundTierKey = keyof typeof FUND_TIER_OBJ;
+
 export type FundConfig = {
     id: string;
     pricesSheet: string;
     dividendsSheet: string;
-    tier: keyof typeof FUND_TIER_OBJ;
+    tier: FundTierKey;
     taxRate?: number;
 };
 
