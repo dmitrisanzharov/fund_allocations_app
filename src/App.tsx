@@ -91,9 +91,19 @@ function App() {
         lastWeekWednesday
     );
 
+    const ishareUkIdentifier = parseFundSheetName(ISHARE_UK_PRICES_SHEET);
+    const ishareUk = useFundSummary(
+        ishareUkIdentifier.name,
+        ishareUkIdentifier.isin,
+        ISHARE_UK_PRICES_SHEET,
+        ISHARE_UK_DIVIDENDS_SHEET,
+        fiveYearsAgo,
+        lastWeekWednesday
+    );
+
     const funds = useMemo(
-        () => [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank],
-        [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank]
+        () => [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk],
+        [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk]
     );
 
     return (
