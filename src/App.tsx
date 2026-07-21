@@ -1,10 +1,12 @@
-import dayjs from 'dayjs';
-import { useMemo } from 'react';
-import { Box, Divider } from '@mui/material';
+import dayjs, { Dayjs } from 'dayjs';
+import { useMemo, useState } from 'react';
+import { Box, Divider, TextField } from '@mui/material';
 import { useFundSummary } from './hooks/useFundSummary';
 import { FundSummaryTable } from './components/FundSummaryTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
-import { FUNDS, FundConfig, TODAY_TIMESTAMP } from './constants';
+import { FUNDS, FundConfig } from './constants';
+
+const DATE_FORMAT = 'YYYY-MM-DD';
 
 function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
     const config = FUNDS.find((fund) => fund.id === id);
@@ -16,11 +18,8 @@ function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
 }
 
 function App() {
-    const lastWeekWednesday = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
-    const fiveYearsAgo = useMemo(
-        () => lastWeekWednesday.subtract(5, 'year').startOf('day'),
-        [lastWeekWednesday]
-    );
+    const [asOfDate, setAsOfDate] = useState<Dayjs>(() => dayjs().startOf('day'));
+    const fiveYearsAgo = useMemo(() => asOfDate.subtract(5, 'year').startOf('day'), [asOfDate]);
 
     // funds
     const vaneckConfig = getFundConfig('vaneck');
@@ -31,7 +30,7 @@ function App() {
         vaneckConfig.pricesSheet,
         vaneckConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         vaneckConfig.taxRate
     );
 
@@ -43,7 +42,7 @@ function App() {
         globalSelectConfig.pricesSheet,
         globalSelectConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         globalSelectConfig.taxRate
     );
 
@@ -55,7 +54,7 @@ function App() {
         vanguardConfig.pricesSheet,
         vanguardConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         vanguardConfig.taxRate
     );
 
@@ -67,7 +66,7 @@ function App() {
         invescoEuConfig.pricesSheet,
         invescoEuConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         invescoEuConfig.taxRate
     );
 
@@ -79,7 +78,7 @@ function App() {
         ishareEuSelectConfig.pricesSheet,
         ishareEuSelectConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         ishareEuSelectConfig.taxRate
     );
 
@@ -91,7 +90,7 @@ function App() {
         ishareEuBankConfig.pricesSheet,
         ishareEuBankConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         ishareEuBankConfig.taxRate
     );
 
@@ -103,7 +102,7 @@ function App() {
         ishareUkConfig.pricesSheet,
         ishareUkConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         ishareUkConfig.taxRate
     );
 
@@ -122,6 +121,19 @@ function App() {
 
     return (
         <Box sx={{ p: 4 }}>
+            <Box sx={{ mb: 4 }}>
+                <TextField
+                    label="As of date"
+                    type="date"
+                    value={asOfDate.format(DATE_FORMAT)}
+                    onChange={(event) => {
+                        if (event.target.value) {
+                            setAsOfDate(dayjs(event.target.value).startOf('day'));
+                        }
+                    }}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                />
+            </Box>
             <FundSummaryTable funds={funds} />
         </Box>
     );
