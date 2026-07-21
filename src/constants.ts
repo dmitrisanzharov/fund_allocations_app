@@ -62,7 +62,7 @@ export const FUNDS = [
         id: 'ishareEuBank',
         pricesSheet: 'iSharesEuBank_DE000A0F5UJ7',
         dividendsSheet: 'iSharesEuBank_DE000A0F5UJ7_div',
-        tier: 'EU'
+        tier: 'tier_2'
     },
     {
         id: 'ishareUk',
