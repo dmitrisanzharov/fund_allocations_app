@@ -1,12 +1,13 @@
 import dayjs, { Dayjs } from 'dayjs';
 import { useMemo, useState } from 'react';
-import { Box, Divider, TextField } from '@mui/material';
+import { Box, Divider } from '@mui/material';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useFundSummary } from './hooks/useFundSummary';
 import { FundSummaryTable } from './components/FundSummaryTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
 import { FUNDS, FundConfig } from './constants';
-
-const DATE_FORMAT = 'YYYY-MM-DD';
 
 function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
     const config = FUNDS.find((fund) => fund.id === id);
@@ -122,17 +123,19 @@ function App() {
     return (
         <Box sx={{ p: 4 }}>
             <Box sx={{ mb: 4 }}>
-                <TextField
-                    label="As of date"
-                    type="date"
-                    value={asOfDate.format(DATE_FORMAT)}
-                    onChange={(event) => {
-                        if (event.target.value) {
-                            setAsOfDate(dayjs(event.target.value).startOf('day'));
-                        }
-                    }}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                />
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DatePicker
+                        label="As of date"
+                        format="DD/MM/YYYY"
+                        value={asOfDate}
+                        maxDate={dayjs().startOf('day')}
+                        onChange={(newDate) => {
+                            if (newDate) {
+                                setAsOfDate(newDate.startOf('day'));
+                            }
+                        }}
+                    />
+                </LocalizationProvider>
             </Box>
             <FundSummaryTable funds={funds} />
         </Box>
