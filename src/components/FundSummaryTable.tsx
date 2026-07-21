@@ -8,6 +8,14 @@ const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as 
 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
+const ALLOCATION_HEADER_BACKGROUND = 'darkgoldenrod';
+
+const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
+    totalReturn: AVERAGED_HEADER_BACKGROUND,
+    averageYield: AVERAGED_HEADER_BACKGROUND,
+    returnPerRisk: AVERAGED_HEADER_BACKGROUND,
+    allocation: ALLOCATION_HEADER_BACKGROUND
+};
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
     totalReturn: 1.5,
@@ -22,6 +30,15 @@ function averageOf(values: (string | null)[]): string | null {
     }
 
     return (numbers.reduce((sum, value) => sum + value, 0) / numbers.length).toFixed(2);
+}
+
+function sumOf(values: (string | null)[]): string | null {
+    const numbers = values.filter((value): value is string => value !== null).map(Number);
+    if (numbers.length === 0) {
+        return null;
+    }
+
+    return numbers.reduce((sum, value) => sum + value, 0).toFixed(2);
 }
 
 function calculateRawScore(value: string | null, average: string | null, weight: number): number | null {
@@ -55,6 +72,19 @@ function calculateFundScore(
     ).filter((score): score is number => score !== null);
 
     return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0).toFixed(2);
+}
+
+function calculateAllocation(
+    row: FundSummary,
+    columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
+    totalFundScore: number | null
+): string | null {
+    const score = calculateFundScore(row, columnAverages);
+    if (score === null || totalFundScore === null || totalFundScore === 0) {
+        return null;
+    }
+
+    return ((Number(score) / totalFundScore) * 100).toFixed(2);
 }
 
 const columnHelper = createColumnHelper<FundSummary>();
@@ -115,19 +145,17 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                 id: 'fundScore',
                 header: 'Fund Score'
             }),
-            columnHelper.accessor(
-                (row) => {
-                    const score = calculateFundScore(row, columnAverages);
-                    if (score === null || totalFundScore === null || totalFundScore === 0) {
-                        return null;
-                    }
-
-                    return ((Number(score) / totalFundScore) * 100).toFixed(2);
-                },
-                { id: 'allocation', header: 'Allocation %' }
-            )
+            columnHelper.accessor((row) => calculateAllocation(row, columnAverages, totalFundScore), {
+                id: 'allocation',
+                header: 'Allocation %'
+            })
         ],
         [columnAverages, totalFundScore]
+    );
+
+    const allocationSum = useMemo(
+        () => sumOf(funds.map((fund) => calculateAllocation(fund, columnAverages, totalFundScore))),
+        [funds, columnAverages, totalFundScore]
     );
 
     const table = useReactTable({
@@ -143,19 +171,25 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
                         {table.getFlatHeaders().map((header) => {
                             const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
-                            const value =
-                                isAveraged && columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]];
+                            const isAllocation = header.column.id === 'allocation';
+                            const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
+                            const value = isAveraged
+                                ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
+                                : isAllocation
+                                ? allocationSum
+                                : null;
+                            const tooltipTitle = isAllocation ? 'sum of column' : 'average for column';
 
                             return (
                                 <TableCell
                                     key={header.id}
                                     sx={{
                                         fontWeight: 'bold',
-                                        backgroundColor: isAveraged ? AVERAGED_HEADER_BACKGROUND : undefined
+                                        backgroundColor: highlightBackground
                                     }}
                                 >
-                                    {isAveraged && (
-                                        <Tooltip title='average for column' placement='top'>
+                                    {(isAveraged || isAllocation) && (
+                                        <Tooltip title={tooltipTitle} placement='top'>
                                             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                                                 <span>{value}</span>
                                                 <InfoOutlinedIcon fontSize='small' />
@@ -169,16 +203,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
                             {headerGroup.headers.map((header) => {
-                                const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(
-                                    header.column.id
-                                );
+                                const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
 
                                 return (
                                     <TableCell
                                         key={header.id}
                                         sx={{
                                             fontWeight: 'bold',
-                                            backgroundColor: isAveraged ? AVERAGED_HEADER_BACKGROUND : undefined
+                                            backgroundColor: highlightBackground
                                         }}
                                     >
                                         {flexRender(header.column.columnDef.header, header.getContext())}
