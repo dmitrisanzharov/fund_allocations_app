@@ -17,7 +17,7 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     totalReturn: AVERAGED_HEADER_BACKGROUND,
     averageYield: AVERAGED_HEADER_BACKGROUND,
     returnPerRisk: AVERAGED_HEADER_BACKGROUND,
-    allocation: ALLOCATION_HEADER_BACKGROUND
+    finalAllocation: ALLOCATION_HEADER_BACKGROUND
 };
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
@@ -95,19 +95,6 @@ function calculateTierScoreSums(
     return sums;
 }
 
-function calculateAllocation(
-    row: FundSummary,
-    columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
-    totalFundScore: number | null
-): string | null {
-    const score = calculateFundScore(row, columnAverages);
-    if (score === null || totalFundScore === null || totalFundScore === 0) {
-        return null;
-    }
-
-    return ((Number(score) / totalFundScore) * 100).toFixed(2);
-}
-
 function calculateFinalAllocation(
     row: FundRow,
     columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
@@ -172,15 +159,6 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         [funds]
     );
 
-    const totalFundScore = useMemo(() => {
-        const scores = funds
-            .map((fund) => calculateFundScore(fund, columnAverages))
-            .filter((score): score is string => score !== null)
-            .map(Number);
-
-        return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0);
-    }, [funds, columnAverages]);
-
     const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
 
     const columns = useMemo(
@@ -196,10 +174,6 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                 id: 'fundScore',
                 header: 'Fund Score'
             }),
-            columnHelper.accessor((row) => calculateAllocation(row, columnAverages, totalFundScore), {
-                id: 'allocation',
-                header: 'Allocation %'
-            }),
             columnHelper.accessor((row) => (FUND_TIER_OBJ[row.tier].maxAllocation * 100).toFixed(2), {
                 id: 'maxAllocation',
                 header: 'Max Allocation %'
@@ -213,12 +187,12 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                 header: 'Final Allocation %'
             })
         ],
-        [columnAverages, totalFundScore, tierScoreSums]
+        [columnAverages, tierScoreSums]
     );
 
-    const allocationSum = useMemo(
-        () => sumOf(funds.map((fund) => calculateAllocation(fund, columnAverages, totalFundScore))),
-        [funds, columnAverages, totalFundScore]
+    const finalAllocationSum = useMemo(
+        () => sumOf(funds.map((fund) => calculateFinalAllocation(fund, columnAverages, tierScoreSums))),
+        [funds, columnAverages, tierScoreSums]
     );
 
     const table = useReactTable({
@@ -234,14 +208,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
                         {table.getFlatHeaders().map((header) => {
                             const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
-                            const isAllocation = header.column.id === 'allocation';
+                            const isFinalAllocation = header.column.id === 'finalAllocation';
                             const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                             const value = isAveraged
                                 ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
-                                : isAllocation
-                                ? allocationSum
+                                : isFinalAllocation
+                                ? finalAllocationSum
                                 : null;
-                            const tooltipTitle = isAllocation ? 'sum of column' : 'average for column';
+                            const tooltipTitle = isFinalAllocation ? 'sum of column' : 'average for column';
 
                             return (
                                 <TableCell
@@ -251,7 +225,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                         backgroundColor: highlightBackground
                                     }}
                                 >
-                                    {(isAveraged || isAllocation) && (
+                                    {(isAveraged || isFinalAllocation) && (
                                         <Tooltip title={tooltipTitle} placement='top'>
                                             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                                                 <span>{value}</span>
