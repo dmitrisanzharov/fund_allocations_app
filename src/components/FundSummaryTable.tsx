@@ -12,12 +12,14 @@ const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
 const ALLOCATION_HEADER_BACKGROUND = 'darkgoldenrod';
+const FUND_SCORE_HEADER_BACKGROUND = 'green';
 
 const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     totalReturn: AVERAGED_HEADER_BACKGROUND,
     averageYield: AVERAGED_HEADER_BACKGROUND,
     returnPerRisk: AVERAGED_HEADER_BACKGROUND,
-    finalAllocation: ALLOCATION_HEADER_BACKGROUND
+    finalAllocation: ALLOCATION_HEADER_BACKGROUND,
+    fundScore: FUND_SCORE_HEADER_BACKGROUND
 };
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
