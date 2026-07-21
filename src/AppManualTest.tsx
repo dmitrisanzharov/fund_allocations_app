@@ -5,7 +5,10 @@ import { useFundSummary } from './hooks/useFundSummary';
 import { ComparisonTable } from './components/ComparisonTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
 import { FundSummaryMock, buildFundComparisonRows } from './utils/compareFundSummary';
-import { TODAY_TIMESTAMP, VANECK_PRICES_SHEET, VANECK_DIVIDENDS_SHEET, GLOBAL_SELECT_PRICES_SHEET, GLOBAL_SELECT_DIVIDENDS_SHEET } from './App';
+import { FUNDS, TODAY_TIMESTAMP } from './constants';
+
+const vaneckConfig = FUNDS.find((fund) => fund.id === 'vaneck')!;
+const globalSelectConfig = FUNDS.find((fund) => fund.id === 'globalSelect')!;
 
 const lastDateOfTestThatPassed = '2026-07-19T15:13:00.780Z';
 
@@ -41,23 +44,23 @@ function AppManualTest() {
     );
 
     // funds
-    const vaneckIdentifier = parseFundSheetName(VANECK_PRICES_SHEET);
+    const vaneckIdentifier = parseFundSheetName(vaneckConfig.pricesSheet);
     const vaneck = useFundSummary(
         vaneckIdentifier.name,
         vaneckIdentifier.isin,
-        VANECK_PRICES_SHEET,
-        VANECK_DIVIDENDS_SHEET,
+        vaneckConfig.pricesSheet,
+        vaneckConfig.dividendsSheet,
         fiveYearsAgo,
         lastWeekWednesday
     );
     console.log('vaneck', vaneck);
 
-    const globalSelectIdentifier = parseFundSheetName(GLOBAL_SELECT_PRICES_SHEET);
+    const globalSelectIdentifier = parseFundSheetName(globalSelectConfig.pricesSheet);
     const globalSelect = useFundSummary(
         globalSelectIdentifier.name,
         globalSelectIdentifier.isin,
-        GLOBAL_SELECT_PRICES_SHEET,
-        GLOBAL_SELECT_DIVIDENDS_SHEET,
+        globalSelectConfig.pricesSheet,
+        globalSelectConfig.dividendsSheet,
         fiveYearsAgo,
         lastWeekWednesday
     );

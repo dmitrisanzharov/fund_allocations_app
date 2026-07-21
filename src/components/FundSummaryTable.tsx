@@ -3,18 +3,23 @@ import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
+import { FUND_TIER_OBJ, FundTierKey } from '../constants';
+
+type FundRow = FundSummary & { tier: FundTierKey };
 
 const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as const;
 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
 const ALLOCATION_HEADER_BACKGROUND = 'darkgoldenrod';
+const FUND_SCORE_HEADER_BACKGROUND = 'green';
 
 const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     totalReturn: AVERAGED_HEADER_BACKGROUND,
     averageYield: AVERAGED_HEADER_BACKGROUND,
     returnPerRisk: AVERAGED_HEADER_BACKGROUND,
-    allocation: ALLOCATION_HEADER_BACKGROUND
+    finalAllocation: ALLOCATION_HEADER_BACKGROUND,
+    fundScore: FUND_SCORE_HEADER_BACKGROUND
 };
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
@@ -74,22 +79,55 @@ function calculateFundScore(
     return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0).toFixed(2);
 }
 
-function calculateAllocation(
-    row: FundSummary,
+function calculateTierScoreSums(
+    funds: FundRow[],
+    columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>
+): Partial<Record<FundTierKey, number>> {
+    const sums: Partial<Record<FundTierKey, number>> = {};
+
+    funds.forEach((fund) => {
+        const score = calculateFundScore(fund, columnAverages);
+        if (score === null) {
+            return;
+        }
+
+        sums[fund.tier] = (sums[fund.tier] ?? 0) + Number(score);
+    });
+
+    return sums;
+}
+
+function calculateFinalAllocation(
+    row: FundRow,
     columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
-    totalFundScore: number | null
+    tierScoreSums: Partial<Record<FundTierKey, number>>
 ): string | null {
     const score = calculateFundScore(row, columnAverages);
-    if (score === null || totalFundScore === null || totalFundScore === 0) {
+    const tierMax = tierScoreSums[row.tier];
+    if (score === null || tierMax === undefined || tierMax === 0) {
         return null;
     }
 
-    return ((Number(score) / totalFundScore) * 100).toFixed(2);
+    const maxAllocation = FUND_TIER_OBJ[row.tier].maxAllocation;
+
+    return ((Number(score) / tierMax) * maxAllocation * 100).toFixed(2);
 }
 
-const columnHelper = createColumnHelper<FundSummary>();
+const columnHelper = createColumnHelper<FundRow>();
 
 const baseColumns = [
+    columnHelper.accessor('tier', {
+        header: 'Tier',
+        cell: (info) => {
+            const tierInfo = FUND_TIER_OBJ[info.getValue()];
+
+            return (
+                <Tooltip title={tierInfo.longName} placement='top'>
+                    <span>{tierInfo.shortName}</span>
+                </Tooltip>
+            );
+        }
+    }),
     columnHelper.accessor('isin', { header: 'ISIN' }),
     columnHelper.accessor('name', { header: 'Fund' }),
     columnHelper.accessor((row) => row.oldest?.Price, { id: 'oldest', header: 'Oldest Price' }),
@@ -110,7 +148,7 @@ const baseColumns = [
 ];
 
 interface FundSummaryTableProps {
-    funds: FundSummary[];
+    funds: FundRow[];
 }
 
 export function FundSummaryTable({ funds }: FundSummaryTableProps) {
@@ -123,14 +161,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         [funds]
     );
 
-    const totalFundScore = useMemo(() => {
-        const scores = funds
-            .map((fund) => calculateFundScore(fund, columnAverages))
-            .filter((score): score is string => score !== null)
-            .map(Number);
-
-        return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0);
-    }, [funds, columnAverages]);
+    const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
 
     const columns = useMemo(
         () => [
@@ -145,17 +176,25 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                 id: 'fundScore',
                 header: 'Fund Score'
             }),
-            columnHelper.accessor((row) => calculateAllocation(row, columnAverages, totalFundScore), {
-                id: 'allocation',
-                header: 'Allocation %'
+            columnHelper.accessor((row) => (FUND_TIER_OBJ[row.tier].maxAllocation * 100).toFixed(2), {
+                id: 'maxAllocation',
+                header: 'Max Allocation %'
+            }),
+            columnHelper.accessor((row) => tierScoreSums[row.tier]?.toFixed(2) ?? null, {
+                id: 'tierMax',
+                header: 'Tier Max'
+            }),
+            columnHelper.accessor((row) => calculateFinalAllocation(row, columnAverages, tierScoreSums), {
+                id: 'finalAllocation',
+                header: 'Final Allocation %'
             })
         ],
-        [columnAverages, totalFundScore]
+        [columnAverages, tierScoreSums]
     );
 
-    const allocationSum = useMemo(
-        () => sumOf(funds.map((fund) => calculateAllocation(fund, columnAverages, totalFundScore))),
-        [funds, columnAverages, totalFundScore]
+    const finalAllocationSum = useMemo(
+        () => sumOf(funds.map((fund) => calculateFinalAllocation(fund, columnAverages, tierScoreSums))),
+        [funds, columnAverages, tierScoreSums]
     );
 
     const table = useReactTable({
@@ -171,14 +210,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
                         {table.getFlatHeaders().map((header) => {
                             const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
-                            const isAllocation = header.column.id === 'allocation';
+                            const isFinalAllocation = header.column.id === 'finalAllocation';
                             const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                             const value = isAveraged
                                 ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
-                                : isAllocation
-                                ? allocationSum
+                                : isFinalAllocation
+                                ? finalAllocationSum
                                 : null;
-                            const tooltipTitle = isAllocation ? 'sum of column' : 'average for column';
+                            const tooltipTitle = isFinalAllocation ? 'sum of column' : 'average for column';
 
                             return (
                                 <TableCell
@@ -188,7 +227,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                         backgroundColor: highlightBackground
                                     }}
                                 >
-                                    {(isAveraged || isAllocation) && (
+                                    {(isAveraged || isFinalAllocation) && (
                                         <Tooltip title={tooltipTitle} placement='top'>
                                             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                                                 <span>{value}</span>
