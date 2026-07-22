@@ -101,6 +101,14 @@ function calculateTierScoreSums(
     return sums;
 }
 
+function calculateAllocationDifference(finalAllocation: string | null, currentAllocation: string | null): number | null {
+    if (finalAllocation === null || currentAllocation === null) {
+        return null;
+    }
+
+    return Number(currentAllocation) - Number(finalAllocation);
+}
+
 function calculateFinalAllocation(
     row: FundRow,
     columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
@@ -115,6 +123,10 @@ function calculateFinalAllocation(
     const maxAllocation = FUND_TIER_OBJ[row.tier].maxAllocation;
 
     return ((Number(score) / tierMax) * maxAllocation * 100).toFixed(2);
+}
+
+function calculateCurrentAllocation(row: FundRow, totalValue: number): string | null {
+    return totalValue > 0 ? ((row.value / totalValue) * 100).toFixed(2) : null;
 }
 
 const columnHelper = createColumnHelper<FundRow>();
@@ -144,10 +156,6 @@ const baseColumns = [
                 <span>{info.getValue()}</span>
             </Tooltip>
         )
-    }),
-    columnHelper.accessor((row) => row.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), {
-        id: 'value',
-        header: 'Current Value'
     }),
     columnHelper.accessor((row) => row.oldest?.Price, { id: 'oldest', header: 'Oldest Price' }),
     columnHelper.accessor((row) => row.newest?.Price, { id: 'newest', header: 'Newest Price' }),
@@ -182,6 +190,8 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
 
     const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
 
+    const totalValue = useMemo(() => funds.reduce((sum, fund) => sum + fund.value, 0), [funds]);
+
     const columns = useMemo(
         () => [
             ...baseColumns,
@@ -206,14 +216,49 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
             columnHelper.accessor((row) => calculateFinalAllocation(row, columnAverages, tierScoreSums), {
                 id: 'finalAllocation',
                 header: 'Final Allocation %'
-            })
+            }),
+            columnHelper.accessor((row) => row.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), {
+                id: 'value',
+                header: 'Current Value'
+            }),
+            columnHelper.accessor((row) => calculateCurrentAllocation(row, totalValue), {
+                id: 'currentAllocation',
+                header: 'Current Allocation %'
+            }),
+            columnHelper.accessor(
+                (row) =>
+                    calculateAllocationDifference(
+                        calculateFinalAllocation(row, columnAverages, tierScoreSums),
+                        calculateCurrentAllocation(row, totalValue)
+                    ),
+                {
+                    id: 'allocationDifference',
+                    header: 'Difference',
+                    cell: (info) => {
+                        const difference = info.getValue();
+                        if (difference === null) {
+                            return null;
+                        }
+
+                        const formatted = `${difference > 0 ? '+' : ''}${difference.toFixed(2)}`;
+                        const color = difference > 0 ? 'green' : difference < 0 ? 'red' : undefined;
+
+                        return <span style={{ color }}>{formatted}</span>;
+                    }
+                }
+            )
         ],
-        [columnAverages, tierScoreSums]
+        [columnAverages, tierScoreSums, totalValue]
     );
 
     const finalAllocationSum = useMemo(
         () => sumOf(funds.map((fund) => calculateFinalAllocation(fund, columnAverages, tierScoreSums))),
         [funds, columnAverages, tierScoreSums]
+    );
+
+    const valueSum = useMemo(
+        () => totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        [totalValue]
     );
 
     const table = useReactTable({
@@ -230,13 +275,17 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                         {table.getFlatHeaders().map((header) => {
                             const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
                             const isFinalAllocation = header.column.id === 'finalAllocation';
+                            const isValue = header.column.id === 'value';
+                            const isSummed = isFinalAllocation || isValue;
                             const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                             const value = isAveraged
                                 ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
                                 : isFinalAllocation
                                 ? finalAllocationSum
+                                : isValue
+                                ? valueSum
                                 : null;
-                            const tooltipTitle = isFinalAllocation ? 'sum of column' : 'average for column';
+                            const tooltipTitle = isSummed ? 'sum of column' : 'average for column';
 
                             return (
                                 <TableCell
@@ -246,7 +295,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                         backgroundColor: highlightBackground
                                     }}
                                 >
-                                    {(isAveraged || isFinalAllocation) && (
+                                    {(isAveraged || isSummed) && (
                                         <Tooltip title={tooltipTitle} placement='top'>
                                             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                                                 <span>{value}</span>
