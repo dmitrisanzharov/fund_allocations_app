@@ -1,5 +1,5 @@
 import dayjs, { Dayjs } from 'dayjs';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box, Divider } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -120,6 +120,27 @@ function App() {
         [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk]
     );
 
+    // most recent date for which every fund has data, i.e. the lowest of each fund's latestAvailableDate
+    const maxSelectableDate = useMemo(() => {
+        const latestDates = funds
+            .map((fund) => fund.latestAvailableDate)
+            .filter((date): date is string => date !== null)
+            .map((date) => dayjs(date).startOf('day'));
+
+        const today = dayjs().startOf('day');
+        if (latestDates.length === 0) {
+            return today;
+        }
+
+        return latestDates.reduce((lowest, date) => (date.isBefore(lowest) ? date : lowest), today);
+    }, [funds]);
+
+    useEffect(() => {
+        if (asOfDate.isAfter(maxSelectableDate)) {
+            setAsOfDate(maxSelectableDate);
+        }
+    }, [asOfDate, maxSelectableDate]);
+
     return (
         <Box sx={{ p: 4 }}>
             <Box sx={{ mb: 4 }}>
@@ -128,7 +149,7 @@ function App() {
                         label="As of date"
                         format="DD/MM/YYYY"
                         value={asOfDate}
-                        maxDate={dayjs().startOf('day')}
+                        maxDate={maxSelectableDate}
                         onChange={(newDate) => {
                             if (newDate) {
                                 setAsOfDate(newDate.startOf('day'));

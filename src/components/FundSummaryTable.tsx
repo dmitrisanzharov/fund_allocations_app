@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import dayjs from 'dayjs';
 import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -129,6 +130,10 @@ const baseColumns = [
         }
     }),
     columnHelper.accessor('isin', { header: 'ISIN' }),
+    columnHelper.accessor((row) => (row.latestAvailableDate ? dayjs(row.latestAvailableDate).format('DD/MM/YYYY') : null), {
+        id: 'latestAvailableDate',
+        header: 'Latest Price Date'
+    }),
     columnHelper.accessor('name', { header: 'Fund' }),
     columnHelper.accessor((row) => row.oldest?.Price, { id: 'oldest', header: 'Oldest Price' }),
     columnHelper.accessor((row) => row.newest?.Price, { id: 'newest', header: 'Newest Price' }),

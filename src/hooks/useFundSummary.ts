@@ -12,6 +12,7 @@ export interface FundSummary {
     error: string | null;
     oldest: PriceRow | null;
     newest: PriceRow | null;
+    latestAvailableDate: string | null;
     totalDividends: number;
     newestPlusDividends: number | null;
     correctDifferenceAsPercent: string | null;
@@ -41,6 +42,18 @@ export function useFundSummary(
         () => dividends.rows.filter((row) => isWithinRange(row['Ex-Dividend Date'], start, end)),
         [dividends.rows, start, end]
     );
+
+    // most recent price date available for this fund, regardless of the selected date range
+    const latestAvailableDate = useMemo(() => {
+        if (prices.rows.length === 0) {
+            return null;
+        }
+
+        return prices.rows.reduce(
+            (latest, row) => (dayjs(row.date).valueOf() > dayjs(latest).valueOf() ? row.date : latest),
+            prices.rows[0].date
+        );
+    }, [prices.rows]);
 
     const sortedPrices = useMemo(
         () => [...filteredPrices].sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()),
@@ -116,6 +129,7 @@ export function useFundSummary(
         error: prices.error ?? dividends.error,
         oldest: priceDifference?.oldest ?? null,
         newest: priceDifference?.newest ?? null,
+        latestAvailableDate,
         totalDividends,
         newestPlusDividends: totalValueIncludingDividends?.newestPlusDividends ?? null,
         correctDifferenceAsPercent: totalValueIncludingDividends?.correctDifferenceAsPercent ?? null,
