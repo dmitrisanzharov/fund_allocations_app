@@ -6,7 +6,7 @@ import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
 
-type FundRow = FundSummary & { tier: FundTierKey };
+type FundRow = FundSummary & { tier: FundTierKey; id: string; value: number };
 
 const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as const;
 
@@ -137,7 +137,18 @@ const baseColumns = [
         id: 'latestAvailableDate',
         header: 'Latest Price Date'
     }),
-    columnHelper.accessor('name', { header: 'Fund' }),
+    columnHelper.accessor('id', {
+        header: 'Fund',
+        cell: (info) => (
+            <Tooltip title={info.row.original.name} placement='top'>
+                <span>{info.getValue()}</span>
+            </Tooltip>
+        )
+    }),
+    columnHelper.accessor((row) => row.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), {
+        id: 'value',
+        header: 'Current Value'
+    }),
     columnHelper.accessor((row) => row.oldest?.Price, { id: 'oldest', header: 'Oldest Price' }),
     columnHelper.accessor((row) => row.newest?.Price, { id: 'newest', header: 'Newest Price' }),
     columnHelper.accessor((row) => row.totalDividends.toFixed(2), { id: 'totalDividends', header: 'Total Dividends' }),
