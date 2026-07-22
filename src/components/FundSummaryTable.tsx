@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import dayjs from 'dayjs';
 import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -8,6 +9,9 @@ import { FUND_TIER_OBJ, FundTierKey } from '../constants';
 type FundRow = FundSummary & { tier: FundTierKey };
 
 const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as const;
+
+const STALE_DATA_THRESHOLD_DAYS = 14;
+const STALE_DATA_BACKGROUND = '#ef9a9a';
 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
@@ -129,6 +133,10 @@ const baseColumns = [
         }
     }),
     columnHelper.accessor('isin', { header: 'ISIN' }),
+    columnHelper.accessor((row) => (row.latestAvailableDate ? dayjs(row.latestAvailableDate).format('DD/MM/YYYY') : null), {
+        id: 'latestAvailableDate',
+        header: 'Latest Price Date'
+    }),
     columnHelper.accessor('name', { header: 'Fund' }),
     columnHelper.accessor((row) => row.oldest?.Price, { id: 'oldest', header: 'Oldest Price' }),
     columnHelper.accessor((row) => row.newest?.Price, { id: 'newest', header: 'Newest Price' }),
@@ -262,11 +270,32 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                 <TableBody>
                     {table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id}>
-                            {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id}>
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </TableCell>
-                            ))}
+                            {row.getVisibleCells().map((cell) => {
+                                const cellContent = flexRender(cell.column.columnDef.cell, cell.getContext());
+
+                                if (cell.column.id === 'latestAvailableDate') {
+                                    const latestAvailableDate = row.original.latestAvailableDate;
+                                    const daysOld = latestAvailableDate
+                                        ? dayjs().startOf('day').diff(dayjs(latestAvailableDate).startOf('day'), 'day')
+                                        : null;
+                                    const isStale = daysOld !== null && daysOld > STALE_DATA_THRESHOLD_DAYS;
+
+                                    if (isStale) {
+                                        return (
+                                            <TableCell
+                                                key={cell.id}
+                                                sx={{ backgroundColor: STALE_DATA_BACKGROUND }}
+                                            >
+                                                <Tooltip title={`Data is: ${daysOld} days old`} placement='top'>
+                                                    <span>{cellContent}</span>
+                                                </Tooltip>
+                                            </TableCell>
+                                        );
+                                    }
+                                }
+
+                                return <TableCell key={cell.id}>{cellContent}</TableCell>;
+                            })}
                         </TableRow>
                     ))}
                 </TableBody>

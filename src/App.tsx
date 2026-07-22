@@ -1,10 +1,13 @@
-import dayjs from 'dayjs';
-import { useMemo } from 'react';
+import dayjs, { Dayjs } from 'dayjs';
+import { useEffect, useMemo, useState } from 'react';
 import { Box, Divider } from '@mui/material';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useFundSummary } from './hooks/useFundSummary';
 import { FundSummaryTable } from './components/FundSummaryTable';
 import { parseFundSheetName } from './utils/fundIdentifier';
-import { FUNDS, FundConfig, TODAY_TIMESTAMP } from './constants';
+import { FUNDS, FundConfig } from './constants';
 
 function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
     const config = FUNDS.find((fund) => fund.id === id);
@@ -16,11 +19,8 @@ function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
 }
 
 function App() {
-    const lastWeekWednesday = useMemo(() => dayjs(TODAY_TIMESTAMP), []);
-    const fiveYearsAgo = useMemo(
-        () => lastWeekWednesday.subtract(5, 'year').startOf('day'),
-        [lastWeekWednesday]
-    );
+    const [asOfDate, setAsOfDate] = useState<Dayjs>(() => dayjs().startOf('day'));
+    const fiveYearsAgo = useMemo(() => asOfDate.subtract(5, 'year').startOf('day'), [asOfDate]);
 
     // funds
     const vaneckConfig = getFundConfig('vaneck');
@@ -31,7 +31,7 @@ function App() {
         vaneckConfig.pricesSheet,
         vaneckConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         vaneckConfig.taxRate
     );
 
@@ -43,7 +43,7 @@ function App() {
         globalSelectConfig.pricesSheet,
         globalSelectConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         globalSelectConfig.taxRate
     );
 
@@ -55,7 +55,7 @@ function App() {
         vanguardConfig.pricesSheet,
         vanguardConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         vanguardConfig.taxRate
     );
 
@@ -67,7 +67,7 @@ function App() {
         invescoEuConfig.pricesSheet,
         invescoEuConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         invescoEuConfig.taxRate
     );
 
@@ -79,7 +79,7 @@ function App() {
         ishareEuSelectConfig.pricesSheet,
         ishareEuSelectConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         ishareEuSelectConfig.taxRate
     );
 
@@ -91,7 +91,7 @@ function App() {
         ishareEuBankConfig.pricesSheet,
         ishareEuBankConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         ishareEuBankConfig.taxRate
     );
 
@@ -103,7 +103,7 @@ function App() {
         ishareUkConfig.pricesSheet,
         ishareUkConfig.dividendsSheet,
         fiveYearsAgo,
-        lastWeekWednesday,
+        asOfDate,
         ishareUkConfig.taxRate
     );
 
@@ -120,8 +120,44 @@ function App() {
         [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk]
     );
 
+    // most recent date for which every fund has data, i.e. the lowest of each fund's latestAvailableDate
+    const maxSelectableDate = useMemo(() => {
+        const latestDates = funds
+            .map((fund) => fund.latestAvailableDate)
+            .filter((date): date is string => date !== null)
+            .map((date) => dayjs(date).startOf('day'));
+
+        const today = dayjs().startOf('day');
+        if (latestDates.length === 0) {
+            return today;
+        }
+
+        return latestDates.reduce((lowest, date) => (date.isBefore(lowest) ? date : lowest), today);
+    }, [funds]);
+
+    useEffect(() => {
+        if (asOfDate.isAfter(maxSelectableDate)) {
+            setAsOfDate(maxSelectableDate);
+        }
+    }, [asOfDate, maxSelectableDate]);
+
     return (
         <Box sx={{ p: 4 }}>
+            <Box sx={{ mb: 4 }}>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DatePicker
+                        label="As of date"
+                        format="DD/MM/YYYY"
+                        value={asOfDate}
+                        maxDate={maxSelectableDate}
+                        onChange={(newDate) => {
+                            if (newDate) {
+                                setAsOfDate(newDate.startOf('day'));
+                            }
+                        }}
+                    />
+                </LocalizationProvider>
+            </Box>
             <FundSummaryTable funds={funds} />
         </Box>
     );
