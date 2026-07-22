@@ -1,6 +1,6 @@
 import dayjs, { Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Divider } from '@mui/material';
+import { Box, Divider, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -157,6 +157,10 @@ function App() {
                         }}
                     />
                 </LocalizationProvider>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    analysis from: {fiveYearsAgo.format('DD/MM/YYYY')} to: {asOfDate.format('DD/MM/YYYY')}, which is{' '}
+                    {asOfDate.diff(fiveYearsAgo, 'year')} years | {asOfDate.diff(fiveYearsAgo, 'day')} days
+                </Typography>
             </Box>
             <FundSummaryTable funds={funds} />
         </Box>
