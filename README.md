@@ -4,3 +4,6 @@
 
 ## original google sheets allocations manager, where I manually did all this stuff
 - https://docs.google.com/spreadsheets/d/1AAP8Db8sCn3AGQRb8OzSWZnDmxaotl_BYKToQq3C6QE/edit?gid=1014089358#gid=1014089358
+
+## APP functionality notes:
+- if 'latest price data' is older than 14 days, you get RED background and 'tooltip' to tell me how old is the data = this tells me I need to update it
