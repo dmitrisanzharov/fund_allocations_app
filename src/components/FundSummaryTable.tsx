@@ -1,7 +1,22 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
-import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material';
+import {
+    Box,
+    Checkbox,
+    IconButton,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Tooltip
+} from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
@@ -261,56 +276,58 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         [totalValue]
     );
 
+    const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+    const [columnMenuAnchor, setColumnMenuAnchor] = useState<null | HTMLElement>(null);
+
     const table = useReactTable({
         data: funds,
         columns,
+        state: { columnVisibility },
+        onColumnVisibilityChange: setColumnVisibility,
         getCoreRowModel: getCoreRowModel()
     });
 
     return (
-        <TableContainer>
-            <Table>
-                <TableHead>
-                    <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
-                        {table.getFlatHeaders().map((header) => {
-                            const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
-                            const isFinalAllocation = header.column.id === 'finalAllocation';
-                            const isValue = header.column.id === 'value';
-                            const isSummed = isFinalAllocation || isValue;
-                            const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
-                            const value = isAveraged
-                                ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
-                                : isFinalAllocation
-                                ? finalAllocationSum
-                                : isValue
-                                ? valueSum
-                                : null;
-                            const tooltipTitle = isSummed ? 'sum of column' : 'average for column';
-
-                            return (
-                                <TableCell
-                                    key={header.id}
-                                    sx={{
-                                        fontWeight: 'bold',
-                                        backgroundColor: highlightBackground
-                                    }}
-                                >
-                                    {(isAveraged || isSummed) && (
-                                        <Tooltip title={tooltipTitle} placement='top'>
-                                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                                                <span>{value}</span>
-                                                <InfoOutlinedIcon fontSize='small' />
-                                            </Box>
-                                        </Tooltip>
-                                    )}
-                                </TableCell>
-                            );
-                        })}
-                    </TableRow>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
-                            {headerGroup.headers.map((header) => {
+        <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                <Tooltip title='Show/hide columns'>
+                    <IconButton size='small' onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
+                        <ViewColumnIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+                <Menu
+                    anchorEl={columnMenuAnchor}
+                    open={Boolean(columnMenuAnchor)}
+                    onClose={() => setColumnMenuAnchor(null)}
+                >
+                    {table.getAllLeafColumns().map((column) => (
+                        <MenuItem key={column.id} dense onClick={column.getToggleVisibilityHandler()}>
+                            <Checkbox size='small' checked={column.getIsVisible()} />
+                            <ListItemText
+                                primary={typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id}
+                            />
+                        </MenuItem>
+                    ))}
+                </Menu>
+            </Box>
+            <TableContainer>
+                <Table>
+                    <TableHead>
+                        <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
+                            {table.getFlatHeaders().map((header) => {
+                                const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
+                                const isFinalAllocation = header.column.id === 'finalAllocation';
+                                const isValue = header.column.id === 'value';
+                                const isSummed = isFinalAllocation || isValue;
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
+                                const value = isAveraged
+                                    ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
+                                    : isFinalAllocation
+                                    ? finalAllocationSum
+                                    : isValue
+                                    ? valueSum
+                                    : null;
+                                const tooltipTitle = isSummed ? 'sum of column' : 'average for column';
 
                                 return (
                                     <TableCell
@@ -320,46 +337,72 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                             backgroundColor: highlightBackground
                                         }}
                                     >
-                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                        {(isAveraged || isSummed) && (
+                                            <Tooltip title={tooltipTitle} placement='top'>
+                                                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                                                    <span>{value}</span>
+                                                    <InfoOutlinedIcon fontSize='small' />
+                                                </Box>
+                                            </Tooltip>
+                                        )}
                                     </TableCell>
                                 );
                             })}
                         </TableRow>
-                    ))}
-                </TableHead>
-                <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                        <TableRow key={row.id}>
-                            {row.getVisibleCells().map((cell) => {
-                                const cellContent = flexRender(cell.column.columnDef.cell, cell.getContext());
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
+                                {headerGroup.headers.map((header) => {
+                                    const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
 
-                                if (cell.column.id === 'latestAvailableDate') {
-                                    const latestAvailableDate = row.original.latestAvailableDate;
-                                    const daysOld = latestAvailableDate
-                                        ? dayjs().startOf('day').diff(dayjs(latestAvailableDate).startOf('day'), 'day')
-                                        : null;
-                                    const isStale = daysOld !== null && daysOld > STALE_DATA_THRESHOLD_DAYS;
+                                    return (
+                                        <TableCell
+                                            key={header.id}
+                                            sx={{
+                                                fontWeight: 'bold',
+                                                backgroundColor: highlightBackground
+                                            }}
+                                        >
+                                            {flexRender(header.column.columnDef.header, header.getContext())}
+                                        </TableCell>
+                                    );
+                                })}
+                            </TableRow>
+                        ))}
+                    </TableHead>
+                    <TableBody>
+                        {table.getRowModel().rows.map((row) => (
+                            <TableRow key={row.id}>
+                                {row.getVisibleCells().map((cell) => {
+                                    const cellContent = flexRender(cell.column.columnDef.cell, cell.getContext());
 
-                                    if (isStale) {
-                                        return (
-                                            <TableCell
-                                                key={cell.id}
-                                                sx={{ backgroundColor: STALE_DATA_BACKGROUND }}
-                                            >
-                                                <Tooltip title={`Data is: ${daysOld} days old`} placement='top'>
-                                                    <span>{cellContent}</span>
-                                                </Tooltip>
-                                            </TableCell>
-                                        );
+                                    if (cell.column.id === 'latestAvailableDate') {
+                                        const latestAvailableDate = row.original.latestAvailableDate;
+                                        const daysOld = latestAvailableDate
+                                            ? dayjs().startOf('day').diff(dayjs(latestAvailableDate).startOf('day'), 'day')
+                                            : null;
+                                        const isStale = daysOld !== null && daysOld > STALE_DATA_THRESHOLD_DAYS;
+
+                                        if (isStale) {
+                                            return (
+                                                <TableCell
+                                                    key={cell.id}
+                                                    sx={{ backgroundColor: STALE_DATA_BACKGROUND }}
+                                                >
+                                                    <Tooltip title={`Data is: ${daysOld} days old`} placement='top'>
+                                                        <span>{cellContent}</span>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            );
+                                        }
                                     }
-                                }
 
-                                return <TableCell key={cell.id}>{cellContent}</TableCell>;
-                            })}
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </TableContainer>
+                                    return <TableCell key={cell.id}>{cellContent}</TableCell>;
+                                })}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        </Box>
     );
 }
