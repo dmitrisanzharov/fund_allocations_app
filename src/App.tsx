@@ -19,7 +19,7 @@ function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
 
 function App() {
     const [asOfDate, setAsOfDate] = useState<Dayjs>(() => dayjs().startOf('day'));
-    const fiveYearsAgo = useMemo(() => asOfDate.subtract(5, 'year').startOf('day'), [asOfDate]);
+    const [backDate, setBackDate] = useState<Dayjs>(() => dayjs().subtract(5, 'year').startOf('day'));
 
     // funds
     const vaneckConfig = getFundConfig('vaneck');
@@ -28,7 +28,7 @@ function App() {
         vaneckConfig.isin,
         vaneckConfig.pricesSheet,
         vaneckConfig.dividendsSheet,
-        fiveYearsAgo,
+        backDate,
         asOfDate,
         vaneckConfig.taxRate
     );
@@ -39,7 +39,7 @@ function App() {
         globalSelectConfig.isin,
         globalSelectConfig.pricesSheet,
         globalSelectConfig.dividendsSheet,
-        fiveYearsAgo,
+        backDate,
         asOfDate,
         globalSelectConfig.taxRate
     );
@@ -50,7 +50,7 @@ function App() {
         vanguardConfig.isin,
         vanguardConfig.pricesSheet,
         vanguardConfig.dividendsSheet,
-        fiveYearsAgo,
+        backDate,
         asOfDate,
         vanguardConfig.taxRate
     );
@@ -61,7 +61,7 @@ function App() {
         invescoEuConfig.isin,
         invescoEuConfig.pricesSheet,
         invescoEuConfig.dividendsSheet,
-        fiveYearsAgo,
+        backDate,
         asOfDate,
         invescoEuConfig.taxRate
     );
@@ -72,7 +72,7 @@ function App() {
         ishareEuSelectConfig.isin,
         ishareEuSelectConfig.pricesSheet,
         ishareEuSelectConfig.dividendsSheet,
-        fiveYearsAgo,
+        backDate,
         asOfDate,
         ishareEuSelectConfig.taxRate
     );
@@ -83,7 +83,7 @@ function App() {
         ishareEuBankConfig.isin,
         ishareEuBankConfig.pricesSheet,
         ishareEuBankConfig.dividendsSheet,
-        fiveYearsAgo,
+        backDate,
         asOfDate,
         ishareEuBankConfig.taxRate
     );
@@ -94,7 +94,7 @@ function App() {
         ishareUkConfig.isin,
         ishareUkConfig.pricesSheet,
         ishareUkConfig.dividendsSheet,
-        fiveYearsAgo,
+        backDate,
         asOfDate,
         ishareUkConfig.taxRate
     );
@@ -133,25 +133,44 @@ function App() {
         }
     }, [asOfDate, maxSelectableDate]);
 
+    useEffect(() => {
+        if (backDate.isAfter(asOfDate)) {
+            setBackDate(asOfDate);
+        }
+    }, [backDate, asOfDate]);
+
     return (
         <Box sx={{ p: 4 }}>
             <Box sx={{ mb: 4 }}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DatePicker
-                        label="As of date"
-                        format="DD/MM/YYYY"
-                        value={asOfDate}
-                        maxDate={maxSelectableDate}
-                        onChange={(newDate) => {
-                            if (newDate) {
-                                setAsOfDate(newDate.startOf('day'));
-                            }
-                        }}
-                    />
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <DatePicker
+                            label="As of date / today"
+                            format="DD/MM/YYYY"
+                            value={asOfDate}
+                            maxDate={maxSelectableDate}
+                            onChange={(newDate) => {
+                                if (newDate) {
+                                    setAsOfDate(newDate.startOf('day'));
+                                }
+                            }}
+                        />
+                        <DatePicker
+                            label="Starting / back date"
+                            format="DD/MM/YYYY"
+                            value={backDate}
+                            maxDate={asOfDate}
+                            onChange={(newDate) => {
+                                if (newDate) {
+                                    setBackDate(newDate.startOf('day'));
+                                }
+                            }}
+                        />
+                    </Box>
                 </LocalizationProvider>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    analysis from: {fiveYearsAgo.format('DD/MM/YYYY')} to: {asOfDate.format('DD/MM/YYYY')}, which is{' '}
-                    {asOfDate.diff(fiveYearsAgo, 'year')} years | {asOfDate.diff(fiveYearsAgo, 'day')} days
+                    analysis from: {backDate.format('DD/MM/YYYY')} to: {asOfDate.format('DD/MM/YYYY')}, which is{' '}
+                    {asOfDate.diff(backDate, 'year', true).toFixed(2)} years | {asOfDate.diff(backDate, 'day')} days
                 </Typography>
             </Box>
             <FundSummaryTable funds={funds} />
