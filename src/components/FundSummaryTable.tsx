@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import {
     Box,
     Checkbox,
-    IconButton,
+    Button,
     ListItemText,
     Menu,
     MenuItem,
@@ -290,10 +290,10 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
     return (
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-                <Tooltip title='Show/hide columns'>
-                    <IconButton size='small' onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
+                <Tooltip title='Show/hide columns' placement='top' arrow>
+                    <Button sx={{ border: '1px solid #ccc', color: 'inherit'}} size='small' onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
                         <ViewColumnIcon fontSize='small' />
-                    </IconButton>
+                    </Button>
                 </Tooltip>
                 <Menu
                     anchorEl={columnMenuAnchor}
