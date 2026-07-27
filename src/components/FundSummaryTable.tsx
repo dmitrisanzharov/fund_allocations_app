@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import {
     Box,
@@ -27,6 +27,8 @@ const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as 
 
 const STALE_DATA_THRESHOLD_DAYS = 14;
 const STALE_DATA_BACKGROUND = '#ef9a9a';
+
+const COLUMN_VISIBILITY_STORAGE_KEY = 'fundSummaryTable.columnVisibility';
 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
@@ -276,8 +278,19 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         [totalValue]
     );
 
-    const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+    const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+        try {
+            const stored = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        } catch {
+            return {};
+        }
+    });
     const [columnMenuAnchor, setColumnMenuAnchor] = useState<null | HTMLElement>(null);
+
+    useEffect(() => {
+        localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    }, [columnVisibility]);
 
     const table = useReactTable({
         data: funds,
