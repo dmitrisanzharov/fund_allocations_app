@@ -20,6 +20,7 @@ function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
 function App() {
     const [asOfDate, setAsOfDate] = useState<Dayjs>(() => dayjs().startOf('day'));
     const [backDate, setBackDate] = useState<Dayjs>(() => dayjs().subtract(5, 'year').startOf('day'));
+    const [isBackDateManual, setIsBackDateManual] = useState(false);
 
     // funds
     const vaneckConfig = getFundConfig('vaneck');
@@ -134,10 +135,15 @@ function App() {
     }, [asOfDate, maxSelectableDate]);
 
     useEffect(() => {
-        if (backDate.isAfter(asOfDate)) {
-            setBackDate(asOfDate);
+        if (isBackDateManual) {
+            if (backDate.isAfter(asOfDate)) {
+                setBackDate(asOfDate);
+            }
+            return;
         }
-    }, [backDate, asOfDate]);
+
+        setBackDate(asOfDate.subtract(5, 'year').startOf('day'));
+    }, [asOfDate, backDate, isBackDateManual]);
 
     return (
         <Box sx={{ p: 4 }}>
@@ -162,6 +168,7 @@ function App() {
                             maxDate={asOfDate}
                             onChange={(newDate) => {
                                 if (newDate) {
+                                    setIsBackDateManual(true);
                                     setBackDate(newDate.startOf('day'));
                                 }
                             }}
