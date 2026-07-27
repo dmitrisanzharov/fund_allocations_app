@@ -20,6 +20,7 @@ import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
+import { outlinedButtonSx } from '../styles';
 
 type FundRow = FundSummary & { tier: FundTierKey; id: string; value: number };
 
@@ -304,7 +305,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
                 <Tooltip title='Show/hide columns' placement='top' arrow>
-                    <Button sx={{ border: '1px solid #ccc', color: 'inherit'}} size='small' onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
+                    <Button variant='outlined' sx={outlinedButtonSx} size='small' onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
                         <ViewColumnIcon fontSize='small' />
                     </Button>
                 </Tooltip>

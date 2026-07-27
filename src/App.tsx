@@ -1,12 +1,13 @@
 import dayjs, { Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Divider, Typography } from '@mui/material';
+import { Box, Button, Divider, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useFundSummary } from './hooks/useFundSummary';
 import { FundSummaryTable } from './components/FundSummaryTable';
 import { FUNDS, FundConfig } from './constants';
+import { outlinedButtonSx } from './styles';
 
 function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
     const config = FUNDS.find((fund) => fund.id === id);
@@ -20,6 +21,7 @@ function getFundConfig(id: (typeof FUNDS)[number]['id']): FundConfig {
 function App() {
     const [asOfDate, setAsOfDate] = useState<Dayjs>(() => dayjs().startOf('day'));
     const [backDate, setBackDate] = useState<Dayjs>(() => dayjs().subtract(5, 'year').startOf('day'));
+    const [isBackDateManual, setIsBackDateManual] = useState(false);
 
     // funds
     const vaneckConfig = getFundConfig('vaneck');
@@ -133,11 +135,32 @@ function App() {
         }
     }, [asOfDate, maxSelectableDate]);
 
-    useEffect(() => {
-        if (backDate.isAfter(asOfDate)) {
-            setBackDate(asOfDate);
+    const applyRangePreset = (preset: 5 | 3 | 1 | 'ytd') => {
+        setAsOfDate(maxSelectableDate);
+
+        if (preset === 'ytd') {
+            setIsBackDateManual(true);
+            setBackDate(maxSelectableDate.startOf('year'));
+            return;
         }
-    }, [backDate, asOfDate]);
+
+        setIsBackDateManual(preset !== 5);
+        setBackDate(maxSelectableDate.subtract(preset, 'year').startOf('day'));
+    };
+
+    useEffect(() => {
+        if (isBackDateManual) {
+            if (backDate.isAfter(asOfDate)) {
+                setBackDate(asOfDate);
+            }
+            return;
+        }
+
+        const defaultBackDate = asOfDate.subtract(5, 'year').startOf('day');
+        if (!backDate.isSame(defaultBackDate)) {
+            setBackDate(defaultBackDate);
+        }
+    }, [asOfDate, backDate, isBackDateManual]);
 
     return (
         <Box sx={{ p: 4 }}>
@@ -156,18 +179,33 @@ function App() {
                             }}
                         />
                         <DatePicker
-                            label="Starting / back date"
+                            label="Starting / back date (default 5 years)"
                             format="DD/MM/YYYY"
                             value={backDate}
                             maxDate={asOfDate}
                             onChange={(newDate) => {
                                 if (newDate) {
+                                    setIsBackDateManual(true);
                                     setBackDate(newDate.startOf('day'));
                                 }
                             }}
                         />
                     </Box>
                 </LocalizationProvider>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset(5)}>
+                        5 years
+                    </Button>
+                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset(3)}>
+                        3 years
+                    </Button>
+                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset(1)}>
+                        1 year
+                    </Button>
+                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset('ytd')}>
+                        YTD
+                    </Button>
+                </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     analysis from: {backDate.format('DD/MM/YYYY')} to: {asOfDate.format('DD/MM/YYYY')}, which is{' '}
                     {asOfDate.diff(backDate, 'year', true).toFixed(2)} years | {asOfDate.diff(backDate, 'day')} days
