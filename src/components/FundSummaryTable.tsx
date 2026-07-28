@@ -28,7 +28,7 @@ const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as 
 
 const STALE_DATA_THRESHOLD_DAYS = 14;
 const STALE_DATA_BACKGROUND = '#ef9a9a';
-const OLDEST_DATE_BACKGROUND = '#f4cbcb';
+const OLDEST_DATE_BACKGROUND = 'lightgray';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'fundSummaryTable.columnVisibility';
 
