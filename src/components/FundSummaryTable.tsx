@@ -438,9 +438,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                 {headerGroup.headers.map((header) => {
                                     const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isValue = header.column.id === 'value';
+                                    const isLatestAvailableDate = header.column.id === 'latestAvailableDate';
                                     const valueUpdateDaysOld =
                                         isValue && oldestValueUpdateDate
                                             ? dayjs().startOf('day').diff(oldestValueUpdateDate.startOf('day'), 'day')
+                                            : null;
+                                    const priceDataAgeDays =
+                                        isLatestAvailableDate && oldestLatestAvailableDate
+                                            ? dayjs().startOf('day').diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
                                             : null;
 
                                     return (
@@ -461,6 +466,16 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                                         <span>
                                                             ({oldestValueUpdateDate.format('DD-MMM-YYYY')}, {valueUpdateDaysOld}{' '}
                                                             {valueUpdateDaysOld === 1 ? 'day' : 'days'})
+                                                        </span>
+                                                    </Tooltip>
+                                                )}
+                                                {isLatestAvailableDate && priceDataAgeDays !== null && (
+                                                    <Tooltip
+                                                        title="NOW - lowest fund date available; so I can NOT search for data that doesn't exist"
+                                                        placement='top'
+                                                    >
+                                                        <span>
+                                                            (Data age: {priceDataAgeDays} {priceDataAgeDays === 1 ? 'day' : 'days'})
                                                         </span>
                                                     </Tooltip>
                                                 )}
