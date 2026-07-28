@@ -245,9 +245,12 @@ const baseColumns = [
 
 interface FundSummaryTableProps {
     funds: FundRow[];
+    analysisYears: string;
 }
 
-export function FundSummaryTable({ funds }: FundSummaryTableProps) {
+const BASED_ON_PERIOD_COLUMN_IDS = ['currentAllocation', 'allocationDifference', 'valueToAdd'];
+
+export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps) {
     const columnAverages = useMemo(
         () => ({
             totalReturn: averageOf(funds.map((fund) => fund.correctDifferenceAsPercent)),
@@ -453,6 +456,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                 const isFinalAllocation = header.column.id === 'finalAllocation';
                                 const isValue = header.column.id === 'value';
                                 const isSummed = isFinalAllocation || isValue;
+                                const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                 const value = isAveraged
                                     ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
@@ -498,6 +502,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                                     <span>{value}</span>
                                                     <InfoOutlinedIcon fontSize='small' />
                                                 </Box>
+                                            </Tooltip>
+                                        )}
+                                        {isBasedOnPeriod && (
+                                            <Tooltip
+                                                title='These figures are calculated over the analysis period shown above the table'
+                                                placement='top'
+                                            >
+                                                <span>based on: {analysisYears} years</span>
                                             </Tooltip>
                                         )}
                                     </TableCell>

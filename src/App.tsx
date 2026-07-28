@@ -204,6 +204,8 @@ function App() {
         }
     }, [asOfDate, backDate, isBackDateManual]);
 
+    const analysisYears = asOfDate.diff(backDate, 'year', true).toFixed(2);
+
     return (
         <Box sx={{ p: 4 }}>
             <Box sx={{ mb: 4 }}>
@@ -250,10 +252,10 @@ function App() {
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     analysis from: {backDate.format('DD/MM/YYYY')} to: {asOfDate.format('DD/MM/YYYY')}, which is{' '}
-                    {asOfDate.diff(backDate, 'year', true).toFixed(2)} years | {asOfDate.diff(backDate, 'day')} days
+                    {analysisYears} years | {asOfDate.diff(backDate, 'day')} days
                 </Typography>
             </Box>
-            <FundSummaryTable funds={funds} />
+            <FundSummaryTable funds={funds} analysisYears={analysisYears} />
         </Box>
     );
 }
