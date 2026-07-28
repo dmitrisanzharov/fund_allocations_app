@@ -17,6 +17,7 @@ import {
     TableContainer,
     TableHead,
     TableRow,
+    TextField,
     Tooltip
 } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -24,6 +25,10 @@ import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
@@ -193,6 +198,103 @@ function CopyableCell({ label, copyText }: { label: string; copyText: string }) 
     );
 }
 
+function EditableValueCell({
+    value,
+    valueToAdd,
+    isOverridden,
+    isEditing,
+    onStartEdit,
+    onSave,
+    onCancel,
+    onReset
+}: {
+    value: number;
+    valueToAdd: number | null;
+    isOverridden: boolean;
+    isEditing: boolean;
+    onStartEdit: () => void;
+    onSave: (newValue: number) => void;
+    onCancel: () => void;
+    onReset: () => void;
+}) {
+    const [inputValue, setInputValue] = useState(String(value));
+
+    useEffect(() => {
+        if (isEditing) {
+            setInputValue(String(value));
+        }
+    }, [isEditing, value]);
+
+    if (isEditing) {
+        const commit = () => {
+            const parsed = Number(inputValue);
+            if (!Number.isNaN(parsed)) {
+                onSave(parsed);
+            }
+        };
+
+        return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <TextField
+                    size='small'
+                    type='number'
+                    value={inputValue}
+                    autoFocus
+                    onChange={(event) => setInputValue(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            commit();
+                        }
+                        if (event.key === 'Escape') {
+                            onCancel();
+                        }
+                    }}
+                    sx={{ width: 130 }}
+                />
+                <Tooltip title='Save'>
+                    <IconButton size='small' onClick={commit}>
+                        <CheckIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title='Cancel'>
+                    <IconButton size='small' onClick={onCancel}>
+                        <CloseIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title='Reset to original value'>
+                    <IconButton size='small' onClick={onReset}>
+                        <RestartAltIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+                {valueToAdd !== null && (
+                    <Tooltip title='add all money to make Difference Zero'>
+                        <IconButton size='small' onClick={() => onSave(value + valueToAdd)}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>€€</span>
+                        </IconButton>
+                    </Tooltip>
+                )}
+            </Box>
+        );
+    }
+
+    return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, '&:hover .edit-icon-button': { opacity: 1 } }}>
+            <span>
+                {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {isOverridden ? ' *' : ''}
+            </span>
+            <IconButton
+                size='small'
+                className='edit-icon-button'
+                sx={{ opacity: 0, transition: 'opacity 0.15s', p: 0.25 }}
+                onClick={onStartEdit}
+            >
+                <EditIcon fontSize='inherit' />
+            </IconButton>
+        </Box>
+    );
+}
+
 const columnHelper = createColumnHelper<FundRow>();
 
 const baseColumns = [
@@ -251,6 +353,14 @@ interface FundSummaryTableProps {
 const BASED_ON_PERIOD_COLUMN_IDS = ['currentAllocation', 'allocationDifference', 'valueToAdd'];
 
 export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps) {
+    const [valueOverrides, setValueOverrides] = useState<Record<string, number>>({});
+    const [editingFundId, setEditingFundId] = useState<string | null>(null);
+
+    const effectiveFunds = useMemo(
+        () => funds.map((fund) => (fund.id in valueOverrides ? { ...fund, value: valueOverrides[fund.id] } : fund)),
+        [funds, valueOverrides]
+    );
+
     const columnAverages = useMemo(
         () => ({
             totalReturn: averageOf(funds.map((fund) => fund.correctDifferenceAsPercent)),
@@ -262,7 +372,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
 
     const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
 
-    const totalValue = useMemo(() => funds.reduce((sum, fund) => sum + fund.value, 0), [funds]);
+    const totalValue = useMemo(() => effectiveFunds.reduce((sum, fund) => sum + fund.value, 0), [effectiveFunds]);
 
     const oldestLatestAvailableDate = useMemo(() => {
         const dates = funds.map((fund) => fund.latestAvailableDate).filter((date): date is string => date !== null);
@@ -329,9 +439,37 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 id: 'finalAllocation',
                 header: 'Final Allocation %'
             }),
-            columnHelper.accessor((row) => row.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), {
+            columnHelper.accessor((row) => row.value, {
                 id: 'value',
-                header: 'Current Value'
+                header: 'Current Value',
+                cell: (info) => {
+                    const fundId = info.row.original.id;
+                    const finalAllocation = calculateFinalAllocation(info.row.original, columnAverages, tierScoreSums);
+                    const valueToAdd = calculateValueToAdd(info.row.original, finalAllocation, totalValue);
+
+                    return (
+                        <EditableValueCell
+                            value={info.getValue()}
+                            valueToAdd={valueToAdd}
+                            isOverridden={fundId in valueOverrides}
+                            isEditing={editingFundId === fundId}
+                            onStartEdit={() => setEditingFundId(fundId)}
+                            onSave={(newValue) => {
+                                setValueOverrides((prev) => ({ ...prev, [fundId]: newValue }));
+                                setEditingFundId(null);
+                            }}
+                            onCancel={() => setEditingFundId(null)}
+                            onReset={() => {
+                                setValueOverrides((prev) => {
+                                    const next = { ...prev };
+                                    delete next[fundId];
+                                    return next;
+                                });
+                                setEditingFundId(null);
+                            }}
+                        />
+                    );
+                }
             }),
             columnHelper.accessor((row) => calculateCurrentAllocation(row, totalValue), {
                 id: 'currentAllocation',
@@ -381,7 +519,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 }
             )
         ],
-        [columnAverages, tierScoreSums, totalValue, doneFunds]
+        [columnAverages, tierScoreSums, totalValue, doneFunds, valueOverrides, editingFundId]
     );
 
     const finalAllocationSum = useMemo(
@@ -416,7 +554,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     }, []);
 
     const table = useReactTable({
-        data: funds,
+        data: effectiveFunds,
         columns,
         state: { columnVisibility },
         onColumnVisibilityChange: setColumnVisibility,
