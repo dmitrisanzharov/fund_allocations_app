@@ -4,6 +4,7 @@ import {
     Box,
     Checkbox,
     Button,
+    IconButton,
     ListItemText,
     Menu,
     MenuItem,
@@ -17,6 +18,8 @@ import {
 } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
@@ -365,6 +368,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     <TableHead>
                         <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
                             {table.getFlatHeaders().map((header) => {
+                                const isDone = header.column.id === 'done';
                                 const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
                                 const isFinalAllocation = header.column.id === 'finalAllocation';
                                 const isValue = header.column.id === 'value';
@@ -387,6 +391,27 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                             backgroundColor: highlightBackground
                                         }}
                                     >
+                                        {isDone && (
+                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                <Tooltip title='Check all' placement='top'>
+                                                    <IconButton
+                                                        size='small'
+                                                        onClick={() =>
+                                                            setDoneFunds(
+                                                                Object.fromEntries(funds.map((fund) => [fund.id, true]))
+                                                            )
+                                                        }
+                                                    >
+                                                        <CheckBoxIcon fontSize='small' />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title='Clear all' placement='top'>
+                                                    <IconButton size='small' onClick={() => setDoneFunds({})}>
+                                                        <CheckBoxOutlineBlankIcon fontSize='small' />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        )}
                                         {(isAveraged || isSummed) && (
                                             <Tooltip title={tooltipTitle} placement='top'>
                                                 <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
