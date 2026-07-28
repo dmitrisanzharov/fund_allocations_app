@@ -138,6 +138,19 @@ function calculateAllocationDifference(finalAllocation: string | null, currentAl
     return Number(currentAllocation) - Number(finalAllocation);
 }
 
+function calculateValueToAdd(row: FundRow, finalAllocation: string | null, totalValue: number): number | null {
+    if (finalAllocation === null) {
+        return null;
+    }
+
+    const targetShare = Number(finalAllocation) / 100;
+    if (targetShare >= 1) {
+        return null;
+    }
+
+    return (targetShare * totalValue - row.value) / (1 - targetShare);
+}
+
 function calculateFinalAllocation(
     row: FundRow,
     columnAverages: Record<(typeof AVERAGED_COLUMN_IDS)[number], string | null>,
@@ -329,7 +342,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     ),
                 {
                     id: 'allocationDifference',
-                    header: 'Difference',
+                    header: 'Difference %',
                     cell: (info) => {
                         const difference = info.getValue();
                         if (difference === null) {
@@ -338,6 +351,27 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
 
                         const formatted = `${difference > 0 ? '+' : ''}${difference.toFixed(2)}`;
                         const color = difference > 0 ? 'green' : difference < 0 ? 'red' : undefined;
+
+                        return <span style={{ color }}>{formatted}</span>;
+                    }
+                }
+            ),
+            columnHelper.accessor(
+                (row) => calculateValueToAdd(row, calculateFinalAllocation(row, columnAverages, tierScoreSums), totalValue),
+                {
+                    id: 'valueToAdd',
+                    header: 'Value to Add (€)',
+                    cell: (info) => {
+                        const valueToAdd = info.getValue();
+                        if (valueToAdd === null) {
+                            return null;
+                        }
+
+                        const formatted = `${valueToAdd > 0 ? '+' : ''}${valueToAdd.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })}`;
+                        const color = valueToAdd > 0 ? 'green' : valueToAdd < 0 ? 'red' : undefined;
 
                         return <span style={{ color }}>{formatted}</span>;
                     }
