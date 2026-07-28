@@ -28,6 +28,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
@@ -199,18 +200,22 @@ function CopyableCell({ label, copyText }: { label: string; copyText: string }) 
 
 function EditableValueCell({
     value,
+    valueToAdd,
     isOverridden,
     isEditing,
     onStartEdit,
     onSave,
-    onCancel
+    onCancel,
+    onReset
 }: {
     value: number;
+    valueToAdd: number | null;
     isOverridden: boolean;
     isEditing: boolean;
     onStartEdit: () => void;
     onSave: (newValue: number) => void;
     onCancel: () => void;
+    onReset: () => void;
 }) {
     const [inputValue, setInputValue] = useState(String(value));
 
@@ -246,12 +251,28 @@ function EditableValueCell({
                     }}
                     sx={{ width: 130 }}
                 />
-                <IconButton size='small' onClick={commit}>
-                    <CheckIcon fontSize='small' />
-                </IconButton>
-                <IconButton size='small' onClick={onCancel}>
-                    <CloseIcon fontSize='small' />
-                </IconButton>
+                <Tooltip title='Save'>
+                    <IconButton size='small' onClick={commit}>
+                        <CheckIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title='Cancel'>
+                    <IconButton size='small' onClick={onCancel}>
+                        <CloseIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title='Reset to original value'>
+                    <IconButton size='small' onClick={onReset}>
+                        <RestartAltIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+                {valueToAdd !== null && (
+                    <Tooltip title='add all money to make Difference Zero'>
+                        <IconButton size='small' onClick={() => onSave(value + valueToAdd)}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>€€</span>
+                        </IconButton>
+                    </Tooltip>
+                )}
             </Box>
         );
     }
@@ -423,10 +444,13 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 header: 'Current Value',
                 cell: (info) => {
                     const fundId = info.row.original.id;
+                    const finalAllocation = calculateFinalAllocation(info.row.original, columnAverages, tierScoreSums);
+                    const valueToAdd = calculateValueToAdd(info.row.original, finalAllocation, totalValue);
 
                     return (
                         <EditableValueCell
                             value={info.getValue()}
+                            valueToAdd={valueToAdd}
                             isOverridden={fundId in valueOverrides}
                             isEditing={editingFundId === fundId}
                             onStartEdit={() => setEditingFundId(fundId)}
@@ -435,6 +459,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 setEditingFundId(null);
                             }}
                             onCancel={() => setEditingFundId(null)}
+                            onReset={() => {
+                                setValueOverrides((prev) => {
+                                    const next = { ...prev };
+                                    delete next[fundId];
+                                    return next;
+                                });
+                                setEditingFundId(null);
+                            }}
                         />
                     );
                 }
