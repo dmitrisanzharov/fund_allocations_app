@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {
     Box,
     Checkbox,
@@ -25,7 +26,9 @@ import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
 import { outlinedButtonSx } from '../styles';
 
-type FundRow = FundSummary & { tier: FundTierKey; id: string; value: number };
+dayjs.extend(customParseFormat);
+
+type FundRow = FundSummary & { tier: FundTierKey; id: string; value: number; lastValueUpdateDate: string };
 
 const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as const;
 
@@ -221,6 +224,12 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         return dates.length === 0
             ? null
             : dates.reduce((oldest, date) => (dayjs(date).isBefore(dayjs(oldest)) ? date : oldest));
+    }, [funds]);
+
+    const oldestValueUpdateDate = useMemo(() => {
+        const dates = funds.map((fund) => dayjs(fund.lastValueUpdateDate, 'DD/MM/YYYY')).filter((date) => date.isValid());
+
+        return dates.length === 0 ? null : dates.reduce((oldest, date) => (date.isBefore(oldest) ? date : oldest));
     }, [funds]);
 
     const [doneFunds, setDoneFunds] = useState<Record<string, boolean>>(() => {
@@ -428,6 +437,11 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                             <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
                                 {headerGroup.headers.map((header) => {
                                     const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
+                                    const isValue = header.column.id === 'value';
+                                    const valueUpdateDaysOld =
+                                        isValue && oldestValueUpdateDate
+                                            ? dayjs().startOf('day').diff(oldestValueUpdateDate.startOf('day'), 'day')
+                                            : null;
 
                                     return (
                                         <TableCell
@@ -437,7 +451,20 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                                 backgroundColor: highlightBackground
                                             }}
                                         >
-                                            {flexRender(header.column.columnDef.header, header.getContext())}
+                                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                                {isValue && oldestValueUpdateDate && valueUpdateDaysOld !== null && (
+                                                    <Tooltip
+                                                        title="Oldest fund value update date across funds"
+                                                        placement='top'
+                                                    >
+                                                        <span>
+                                                            ({oldestValueUpdateDate.format('DD-MMM-YYYY')}, {valueUpdateDaysOld}{' '}
+                                                            {valueUpdateDaysOld === 1 ? 'day' : 'days'})
+                                                        </span>
+                                                    </Tooltip>
+                                                )}
+                                            </Box>
                                         </TableCell>
                                     );
                                 })}

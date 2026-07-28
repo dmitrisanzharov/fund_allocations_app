@@ -103,13 +103,55 @@ function App() {
 
     const funds = useMemo(
         () => [
-            { ...vaneck, id: vaneckConfig.id, tier: vaneckConfig.tier, value: vaneckConfig.value },
-            { ...globalSelect, id: globalSelectConfig.id, tier: globalSelectConfig.tier, value: globalSelectConfig.value },
-            { ...vanguard, id: vanguardConfig.id, tier: vanguardConfig.tier, value: vanguardConfig.value },
-            { ...invescoEu, id: invescoEuConfig.id, tier: invescoEuConfig.tier, value: invescoEuConfig.value },
-            { ...ishareEuSelect, id: ishareEuSelectConfig.id, tier: ishareEuSelectConfig.tier, value: ishareEuSelectConfig.value },
-            { ...ishareEuBank, id: ishareEuBankConfig.id, tier: ishareEuBankConfig.tier, value: ishareEuBankConfig.value },
-            { ...ishareUk, id: ishareUkConfig.id, tier: ishareUkConfig.tier, value: ishareUkConfig.value }
+            {
+                ...vaneck,
+                id: vaneckConfig.id,
+                tier: vaneckConfig.tier,
+                value: vaneckConfig.value,
+                lastValueUpdateDate: vaneckConfig.lastValueUpdateDate
+            },
+            {
+                ...globalSelect,
+                id: globalSelectConfig.id,
+                tier: globalSelectConfig.tier,
+                value: globalSelectConfig.value,
+                lastValueUpdateDate: globalSelectConfig.lastValueUpdateDate
+            },
+            {
+                ...vanguard,
+                id: vanguardConfig.id,
+                tier: vanguardConfig.tier,
+                value: vanguardConfig.value,
+                lastValueUpdateDate: vanguardConfig.lastValueUpdateDate
+            },
+            {
+                ...invescoEu,
+                id: invescoEuConfig.id,
+                tier: invescoEuConfig.tier,
+                value: invescoEuConfig.value,
+                lastValueUpdateDate: invescoEuConfig.lastValueUpdateDate
+            },
+            {
+                ...ishareEuSelect,
+                id: ishareEuSelectConfig.id,
+                tier: ishareEuSelectConfig.tier,
+                value: ishareEuSelectConfig.value,
+                lastValueUpdateDate: ishareEuSelectConfig.lastValueUpdateDate
+            },
+            {
+                ...ishareEuBank,
+                id: ishareEuBankConfig.id,
+                tier: ishareEuBankConfig.tier,
+                value: ishareEuBankConfig.value,
+                lastValueUpdateDate: ishareEuBankConfig.lastValueUpdateDate
+            },
+            {
+                ...ishareUk,
+                id: ishareUkConfig.id,
+                tier: ishareUkConfig.tier,
+                value: ishareUkConfig.value,
+                lastValueUpdateDate: ishareUkConfig.lastValueUpdateDate
+            }
         ],
         [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk]
     );
