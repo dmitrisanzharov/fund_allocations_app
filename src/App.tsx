@@ -1,6 +1,6 @@
 import dayjs, { Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Button, Divider, Typography } from '@mui/material';
+import { Box, Button, Divider, Tooltip, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -162,10 +162,20 @@ function App() {
         }
     }, [asOfDate, backDate, isBackDateManual]);
 
+    const dataAgeDays = dayjs().startOf('day').diff(maxSelectableDate, 'day');
+
     return (
         <Box sx={{ p: 4 }}>
             <Box sx={{ mb: 4 }}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <Tooltip title="NOW - lowest fund date available; so I can NOT search for data that doesn't exist" placement="top">
+                        <Typography
+                            variant="body2"
+                            sx={{ mb: 4, p: 1, border: '1px solid lightgray', borderRadius: 1, width: 'fit-content' }}
+                        >
+                            Data age: {dataAgeDays} {dataAgeDays === 1 ? 'day' : 'days'}
+                        </Typography>
+                    </Tooltip>
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <DatePicker
                             label="As of date / today"
