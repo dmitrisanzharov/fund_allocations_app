@@ -28,6 +28,7 @@ const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as 
 
 const STALE_DATA_THRESHOLD_DAYS = 14;
 const STALE_DATA_BACKGROUND = '#ef9a9a';
+const OLDEST_DATE_BACKGROUND = '#f4cbcb';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'fundSummaryTable.columnVisibility';
 
@@ -209,6 +210,14 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
     const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
 
     const totalValue = useMemo(() => funds.reduce((sum, fund) => sum + fund.value, 0), [funds]);
+
+    const oldestLatestAvailableDate = useMemo(() => {
+        const dates = funds.map((fund) => fund.latestAvailableDate).filter((date): date is string => date !== null);
+
+        return dates.length === 0
+            ? null
+            : dates.reduce((oldest, date) => (dayjs(date).isBefore(dayjs(oldest)) ? date : oldest));
+    }, [funds]);
 
     const columns = useMemo(
         () => [
@@ -395,6 +404,26 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                                             ? dayjs().startOf('day').diff(dayjs(latestAvailableDate).startOf('day'), 'day')
                                             : null;
                                         const isStale = daysOld !== null && daysOld > STALE_DATA_THRESHOLD_DAYS;
+                                        const isOldestAcrossFunds =
+                                            latestAvailableDate !== null &&
+                                            oldestLatestAvailableDate !== null &&
+                                            dayjs(latestAvailableDate).isSame(dayjs(oldestLatestAvailableDate), 'day');
+
+                                        if (isOldestAcrossFunds) {
+                                            return (
+                                                <TableCell
+                                                    key={cell.id}
+                                                    sx={{ backgroundColor: OLDEST_DATE_BACKGROUND }}
+                                                >
+                                                    <Tooltip
+                                                        title="This is the oldest latest-price date across all funds - it sets the app's 'as of date' and needs updating"
+                                                        placement='top'
+                                                    >
+                                                        <span>{cellContent}</span>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            );
+                                        }
 
                                         if (isStale) {
                                             return (
