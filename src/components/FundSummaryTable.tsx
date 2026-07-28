@@ -31,6 +31,7 @@ const STALE_DATA_BACKGROUND = '#ef9a9a';
 const OLDEST_DATE_BACKGROUND = 'lightgray';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'fundSummaryTable.columnVisibility';
+const DONE_FUNDS_STORAGE_KEY = 'fundSummaryTable.doneFunds';
 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
@@ -219,8 +220,34 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
             : dates.reduce((oldest, date) => (dayjs(date).isBefore(dayjs(oldest)) ? date : oldest));
     }, [funds]);
 
+    const [doneFunds, setDoneFunds] = useState<Record<string, boolean>>(() => {
+        try {
+            const stored = localStorage.getItem(DONE_FUNDS_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        } catch {
+            return {};
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem(DONE_FUNDS_STORAGE_KEY, JSON.stringify(doneFunds));
+    }, [doneFunds]);
+
     const columns = useMemo(
         () => [
+            columnHelper.display({
+                id: 'done',
+                header: 'Done',
+                cell: (info) => (
+                    <Checkbox
+                        size='small'
+                        checked={doneFunds[info.row.original.id] ?? false}
+                        onChange={(event) =>
+                            setDoneFunds((prev) => ({ ...prev, [info.row.original.id]: event.target.checked }))
+                        }
+                    />
+                )
+            }),
             ...baseColumns,
             ...AVERAGED_COLUMN_IDS.map((id) =>
                 columnHelper.accessor(
@@ -275,7 +302,7 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                 }
             )
         ],
-        [columnAverages, tierScoreSums, totalValue]
+        [columnAverages, tierScoreSums, totalValue, doneFunds]
     );
 
     const finalAllocationSum = useMemo(
