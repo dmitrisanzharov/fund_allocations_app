@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {
+    Alert,
     Box,
     Checkbox,
     Button,
@@ -9,6 +10,7 @@ import {
     ListItemText,
     Menu,
     MenuItem,
+    Snackbar,
     Table,
     TableBody,
     TableCell,
@@ -21,6 +23,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
@@ -155,6 +158,28 @@ function calculateCurrentAllocation(row: FundRow, totalValue: number): string | 
     return totalValue > 0 ? ((row.value / totalValue) * 100).toFixed(2) : null;
 }
 
+const COPIED_EVENT = 'fund-summary-table:copied';
+
+function CopyableCell({ label, copyText }: { label: string; copyText: string }) {
+    return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, '&:hover .copy-icon-button': { opacity: 1 } }}>
+            <span>{label}</span>
+            <IconButton
+                size='small'
+                className='copy-icon-button'
+                sx={{ opacity: 0, transition: 'opacity 0.15s', p: 0.25 }}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    navigator.clipboard.writeText(copyText);
+                    window.dispatchEvent(new Event(COPIED_EVENT));
+                }}
+            >
+                <ContentCopyIcon fontSize='inherit' />
+            </IconButton>
+        </Box>
+    );
+}
+
 const columnHelper = createColumnHelper<FundRow>();
 
 const baseColumns = [
@@ -170,7 +195,10 @@ const baseColumns = [
             );
         }
     }),
-    columnHelper.accessor('isin', { header: 'ISIN' }),
+    columnHelper.accessor('isin', {
+        header: 'ISIN',
+        cell: (info) => <CopyableCell label={info.getValue()} copyText={info.getValue()} />
+    }),
     columnHelper.accessor((row) => (row.latestAvailableDate ? dayjs(row.latestAvailableDate).format('DD/MM/YYYY') : null), {
         id: 'latestAvailableDate',
         header: 'Latest Price Date'
@@ -179,7 +207,9 @@ const baseColumns = [
         header: 'Fund',
         cell: (info) => (
             <Tooltip title={info.row.original.name} placement='top'>
-                <span>{info.getValue()}</span>
+                <span>
+                    <CopyableCell label={info.getValue()} copyText={info.row.original.name} />
+                </span>
             </Tooltip>
         )
     }),
@@ -336,10 +366,17 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
         }
     });
     const [columnMenuAnchor, setColumnMenuAnchor] = useState<null | HTMLElement>(null);
+    const [copiedSnackbarOpen, setCopiedSnackbarOpen] = useState(false);
 
     useEffect(() => {
         localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
     }, [columnVisibility]);
+
+    useEffect(() => {
+        const handleCopied = () => setCopiedSnackbarOpen(true);
+        window.addEventListener(COPIED_EVENT, handleCopied);
+        return () => window.removeEventListener(COPIED_EVENT, handleCopied);
+    }, []);
 
     const table = useReactTable({
         data: funds,
@@ -540,6 +577,16 @@ export function FundSummaryTable({ funds }: FundSummaryTableProps) {
                     </TableBody>
                 </Table>
             </TableContainer>
+            <Snackbar
+                open={copiedSnackbarOpen}
+                autoHideDuration={2000}
+                onClose={() => setCopiedSnackbarOpen(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert onClose={() => setCopiedSnackbarOpen(false)} severity='success' variant='filled'>
+                    Copied
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
