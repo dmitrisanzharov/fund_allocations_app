@@ -333,7 +333,7 @@ const baseColumns = [
     columnHelper.accessor((row) => row.totalDividends.toFixed(2), { id: 'totalDividends', header: 'Total Dividends' }),
     columnHelper.accessor((row) => row.correctDifferenceAsPercent, {
         id: 'totalReturn',
-        header: 'Total Return %'
+        header: 'Total Returns %, incl. div'
     }),
     columnHelper.accessor((row) => row.averageDividendYield, {
         id: 'averageYield',
@@ -667,6 +667,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 {headerGroup.headers.map((header) => {
                                     const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isValue = header.column.id === 'value';
+                                    const isTotalReturn = header.column.id === 'totalReturn';
                                     const isLatestAvailableDate = header.column.id === 'latestAvailableDate';
                                     const valueUpdateDaysOld =
                                         isValue && oldestValueUpdateDate
@@ -686,7 +687,13 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             }}
                                         >
                                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                                {isTotalReturn ? (
+                                                    <Tooltip title='Total Returns %, including dividends' placement='top'>
+                                                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                                )}
                                                 {isValue && oldestValueUpdateDate && valueUpdateDaysOld !== null && (
                                                     <Tooltip
                                                         title="Oldest fund value update date across funds"
