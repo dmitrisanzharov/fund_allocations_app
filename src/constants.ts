@@ -2,12 +2,12 @@ export const FUND_TIER_OBJ = {
     tier_1: {
         shortName: 'T1',
         longName: 'TIER 1: Global Core ... world / LARGE impact on the world',
-        maxAllocation: 0.725
+        maxAllocation: 0.75
     },
     EU: {
         shortName: 'EU',
         longName: 'euro region',
-        maxAllocation: 0.225
+        maxAllocation: 0.2
     },
     tier_2: {
         shortName: 'T2',

@@ -527,6 +527,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         [funds, columnAverages, tierScoreSums]
     );
 
+    const fundScoreAverage = useMemo(
+        () => averageOf(funds.map((fund) => calculateFundScore(fund, columnAverages))),
+        [funds, columnAverages]
+    );
+
     const valueSum = useMemo(
         () => totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         [totalValue]
@@ -591,6 +596,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                             {table.getFlatHeaders().map((header) => {
                                 const isDone = header.column.id === 'done';
                                 const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
+                                const isFundScore = header.column.id === 'fundScore';
                                 const isFinalAllocation = header.column.id === 'finalAllocation';
                                 const isValue = header.column.id === 'value';
                                 const isSummed = isFinalAllocation || isValue;
@@ -598,6 +604,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                 const value = isAveraged
                                     ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
+                                    : isFundScore
+                                    ? fundScoreAverage
                                     : isFinalAllocation
                                     ? finalAllocationSum
                                     : isValue
@@ -634,7 +642,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 </Tooltip>
                                             </Box>
                                         )}
-                                        {(isAveraged || isSummed) && (
+                                        {(isAveraged || isSummed || isFundScore) && (
                                             <Tooltip title={tooltipTitle} placement='top'>
                                                 <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                                                     <span>{value}</span>

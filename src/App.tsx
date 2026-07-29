@@ -1,6 +1,8 @@
 import dayjs, { Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Button, Divider, Typography } from '@mui/material';
+import { Box, Button, Divider, IconButton, Tooltip, Typography } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -22,6 +24,7 @@ function App() {
     const [asOfDate, setAsOfDate] = useState<Dayjs>(() => dayjs().startOf('day'));
     const [backDate, setBackDate] = useState<Dayjs>(() => dayjs().subtract(5, 'year').startOf('day'));
     const [isBackDateManual, setIsBackDateManual] = useState(false);
+    const [showExtraRangePresets, setShowExtraRangePresets] = useState(false);
 
     // funds
     const vaneckConfig = getFundConfig('vaneck');
@@ -206,6 +209,20 @@ function App() {
 
     const analysisYears = asOfDate.diff(backDate, 'year', true).toFixed(2);
 
+    const activeRangePreset = useMemo(() => {
+        if (!asOfDate.isSame(maxSelectableDate, 'day')) {
+            return null;
+        }
+
+        if (backDate.isSame(maxSelectableDate.startOf('year'), 'day')) {
+            return 'ytd';
+        }
+
+        return ([5, 3, 1] as const).find((preset) =>
+            backDate.isSame(maxSelectableDate.subtract(preset, 'year').startOf('day'), 'day')
+        ) ?? null;
+    }, [asOfDate, backDate, maxSelectableDate]);
+
     return (
         <Box sx={{ p: 4 }}>
             <Box sx={{ mb: 4 }}>
@@ -237,18 +254,63 @@ function App() {
                     </Box>
                 </LocalizationProvider>
                 <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset(5)}>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                            ...outlinedButtonSx,
+                            backgroundColor: activeRangePreset === 5 ? '#f0f0f0' : undefined,
+                            fontWeight: activeRangePreset === 5 ? 'bold' : undefined
+                        }}
+                        onClick={() => applyRangePreset(5)}
+                    >
                         5 years
                     </Button>
-                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset(3)}>
-                        3 years
-                    </Button>
-                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset(1)}>
-                        1 year
-                    </Button>
-                    <Button size="small" variant="outlined" sx={outlinedButtonSx} onClick={() => applyRangePreset('ytd')}>
-                        YTD
-                    </Button>
+                    {showExtraRangePresets && (
+                        <>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                    ...outlinedButtonSx,
+                                    backgroundColor: activeRangePreset === 3 ? '#f0f0f0' : undefined,
+                                    fontWeight: activeRangePreset === 3 ? 'bold' : undefined
+                                }}
+                                onClick={() => applyRangePreset(3)}
+                            >
+                                3 years
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                    ...outlinedButtonSx,
+                                    backgroundColor: activeRangePreset === 1 ? '#f0f0f0' : undefined,
+                                    fontWeight: activeRangePreset === 1 ? 'bold' : undefined
+                                }}
+                                onClick={() => applyRangePreset(1)}
+                            >
+                                1 year
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                    ...outlinedButtonSx,
+                                    backgroundColor: activeRangePreset === 'ytd' ? '#f0f0f0' : undefined,
+                                    fontWeight: activeRangePreset === 'ytd' ? 'bold' : undefined
+                                }}
+                                onClick={() => applyRangePreset('ytd')}
+                            >
+                                YTD
+                            </Button>
+                        </>
+                    )}
+                    <Tooltip title={showExtraRangePresets ? 'Hide 3 years / 1 year / YTD buttons' : 'Show 3 years / 1 year / YTD buttons'}>
+                        <IconButton size="small" onClick={() => setShowExtraRangePresets((prev) => !prev)}>
+                            {showExtraRangePresets ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
+                        </IconButton>
+                    </Tooltip>
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     analysis from: {backDate.format('DD/MM/YYYY')} to: {asOfDate.format('DD/MM/YYYY')}, which is{' '}
