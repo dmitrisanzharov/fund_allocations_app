@@ -60,6 +60,11 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     fundScore: FUND_SCORE_HEADER_BACKGROUND
 };
 
+const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
+    totalReturn: 'Total Returns %, including dividends',
+    valueToAdd: 'if in minus / red = over invested (so can sell here)... if in plus / green = under invested, need to add'
+};
+
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
     totalReturn: 1.5,
     averageYield: 1,
@@ -514,7 +519,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         })}`;
                         const color = valueToAdd > 0 ? 'green' : valueToAdd < 0 ? 'red' : undefined;
 
-                        return <span style={{ color }}>{formatted}</span>;
+                        return (
+                            <Tooltip
+                                title='if in minus / red = over invested (so can sell here)... if in plus / green = under invested, need to add'
+                                placement='top'
+                            >
+                                <span style={{ color }}>{formatted}</span>
+                            </Tooltip>
+                        );
                     }
                 }
             )
@@ -667,8 +679,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 {headerGroup.headers.map((header) => {
                                     const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isValue = header.column.id === 'value';
-                                    const isTotalReturn = header.column.id === 'totalReturn';
                                     const isLatestAvailableDate = header.column.id === 'latestAvailableDate';
+                                    const headerLabelTooltip = HEADER_LABEL_TOOLTIPS[header.column.id];
                                     const valueUpdateDaysOld =
                                         isValue && oldestValueUpdateDate
                                             ? dayjs().startOf('day').diff(oldestValueUpdateDate.startOf('day'), 'day')
@@ -687,8 +699,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             }}
                                         >
                                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                {isTotalReturn ? (
-                                                    <Tooltip title='Total Returns %, including dividends' placement='top'>
+                                                {headerLabelTooltip ? (
+                                                    <Tooltip title={headerLabelTooltip} placement='top'>
                                                         <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                                                     </Tooltip>
                                                 ) : (
