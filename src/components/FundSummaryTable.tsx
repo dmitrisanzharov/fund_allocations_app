@@ -57,6 +57,7 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     averageYield: AVERAGED_HEADER_BACKGROUND,
     returnPerRisk: AVERAGED_HEADER_BACKGROUND,
     finalAllocation: ALLOCATION_HEADER_BACKGROUND,
+    allocationAmount: AVERAGED_HEADER_BACKGROUND,
     fundScore: FUND_SCORE_HEADER_BACKGROUND
 };
 
@@ -360,6 +361,8 @@ const BASED_ON_PERIOD_COLUMN_IDS = ['currentAllocation', 'allocationDifference',
 export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps) {
     const [valueOverrides, setValueOverrides] = useState<Record<string, number>>({});
     const [editingFundId, setEditingFundId] = useState<string | null>(null);
+    const [allocationInputAmount, setAllocationInputAmount] = useState('');
+    const allocationAmountNumber = Number(allocationInputAmount) || 0;
 
     const effectiveFunds = useMemo(
         () => funds.map((fund) => (fund.id in valueOverrides ? { ...fund, value: valueOverrides[fund.id] } : fund)),
@@ -443,6 +446,20 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
             columnHelper.accessor((row) => calculateFinalAllocation(row, columnAverages, tierScoreSums), {
                 id: 'finalAllocation',
                 header: 'Final Allocation %'
+            }),
+            columnHelper.display({
+                id: 'allocationAmount',
+                header: 'Allocation Amount',
+                cell: (info) => {
+                    const finalAllocation = calculateFinalAllocation(info.row.original, columnAverages, tierScoreSums);
+                    if (finalAllocation === null) {
+                        return null;
+                    }
+
+                    const amount = (Number(finalAllocation) / 100) * allocationAmountNumber;
+
+                    return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
             }),
             columnHelper.accessor((row) => row.value, {
                 id: 'value',
@@ -531,7 +548,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 }
             )
         ],
-        [columnAverages, tierScoreSums, totalValue, doneFunds, valueOverrides, editingFundId]
+        [columnAverages, tierScoreSums, totalValue, doneFunds, valueOverrides, editingFundId, allocationAmountNumber]
     );
 
     const finalAllocationSum = useMemo(
@@ -610,6 +627,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
                                 const isFundScore = header.column.id === 'fundScore';
                                 const isFinalAllocation = header.column.id === 'finalAllocation';
+                                const isAllocationAmount = header.column.id === 'allocationAmount';
                                 const isValue = header.column.id === 'value';
                                 const isSummed = isFinalAllocation || isValue;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
@@ -653,6 +671,18 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                     </IconButton>
                                                 </Tooltip>
                                             </Box>
+                                        )}
+                                        {isAllocationAmount && (
+                                            <Tooltip title='Enter an amount to allocate using the Final Allocation %' placement='top'>
+                                                <TextField
+                                                    size='small'
+                                                    type='number'
+                                                    placeholder='Amount'
+                                                    value={allocationInputAmount}
+                                                    onChange={(event) => setAllocationInputAmount(event.target.value)}
+                                                    sx={{ width: 110, backgroundColor: 'white', borderRadius: 1 }}
+                                                />
+                                            </Tooltip>
                                         )}
                                         {(isAveraged || isSummed || isFundScore) && (
                                             <Tooltip title={tooltipTitle} placement='top'>
