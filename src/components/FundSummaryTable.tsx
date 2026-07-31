@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {
@@ -363,10 +363,16 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const [editingFundId, setEditingFundId] = useState<string | null>(null);
     const [allocationInputAmount, setAllocationInputAmount] = useState('');
     const allocationAmountNumber = Number(allocationInputAmount) || 0;
+    const [addMoneyAmounts, setAddMoneyAmounts] = useState<Record<string, string>>({});
 
     const effectiveFunds = useMemo(
-        () => funds.map((fund) => (fund.id in valueOverrides ? { ...fund, value: valueOverrides[fund.id] } : fund)),
-        [funds, valueOverrides]
+        () =>
+            funds.map((fund) => {
+                const baseValue = fund.id in valueOverrides ? valueOverrides[fund.id] : fund.value;
+                const addAmount = Number(addMoneyAmounts[fund.id]) || 0;
+                return { ...fund, value: baseValue + addAmount };
+            }),
+        [funds, valueOverrides, addMoneyAmounts]
     );
 
     const columnAverages = useMemo(
@@ -381,6 +387,16 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
 
     const totalValue = useMemo(() => effectiveFunds.reduce((sum, fund) => sum + fund.value, 0), [effectiveFunds]);
+
+    // Read via refs inside column cell/accessor closures so typing into per-keystroke inputs
+    // (Add Moneys, Allocation Amount) doesn't need to rebuild `columns` on every character —
+    // rebuilding it would hand flexRender a new function identity and remount the inputs, dropping focus.
+    const totalValueRef = useRef(totalValue);
+    totalValueRef.current = totalValue;
+    const allocationAmountRef = useRef(allocationAmountNumber);
+    allocationAmountRef.current = allocationAmountNumber;
+    const addMoneyAmountsRef = useRef(addMoneyAmounts);
+    addMoneyAmountsRef.current = addMoneyAmounts;
 
     const oldestLatestAvailableDate = useMemo(() => {
         const dates = funds.map((fund) => fund.latestAvailableDate).filter((date): date is string => date !== null);
@@ -456,7 +472,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         return null;
                     }
 
-                    const amount = (Number(finalAllocation) / 100) * allocationAmountNumber;
+                    const amount = (Number(finalAllocation) / 100) * allocationAmountRef.current;
 
                     return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
@@ -467,7 +483,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 cell: (info) => {
                     const fundId = info.row.original.id;
                     const finalAllocation = calculateFinalAllocation(info.row.original, columnAverages, tierScoreSums);
-                    const valueToAdd = calculateValueToAdd(info.row.original, finalAllocation, totalValue);
+                    const valueToAdd = calculateValueToAdd(info.row.original, finalAllocation, totalValueRef.current);
 
                     return (
                         <EditableValueCell
@@ -478,11 +494,21 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                             onStartEdit={() => setEditingFundId(fundId)}
                             onSave={(newValue) => {
                                 setValueOverrides((prev) => ({ ...prev, [fundId]: newValue }));
+                                setAddMoneyAmounts((prev) => {
+                                    const next = { ...prev };
+                                    delete next[fundId];
+                                    return next;
+                                });
                                 setEditingFundId(null);
                             }}
                             onCancel={() => setEditingFundId(null)}
                             onReset={() => {
                                 setValueOverrides((prev) => {
+                                    const next = { ...prev };
+                                    delete next[fundId];
+                                    return next;
+                                });
+                                setAddMoneyAmounts((prev) => {
                                     const next = { ...prev };
                                     delete next[fundId];
                                     return next;
@@ -493,7 +519,27 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                     );
                 }
             }),
-            columnHelper.accessor((row) => calculateCurrentAllocation(row, totalValue), {
+            columnHelper.display({
+                id: 'addMoney',
+                header: 'Add Moneys',
+                cell: (info) => {
+                    const fundId = info.row.original.id;
+
+                    return (
+                        <TextField
+                            size='small'
+                            type='number'
+                            placeholder='Add'
+                            value={addMoneyAmountsRef.current[fundId] ?? ''}
+                            onChange={(event) =>
+                                setAddMoneyAmounts((prev) => ({ ...prev, [fundId]: event.target.value }))
+                            }
+                            sx={{ width: 110 }}
+                        />
+                    );
+                }
+            }),
+            columnHelper.accessor((row) => calculateCurrentAllocation(row, totalValueRef.current), {
                 id: 'currentAllocation',
                 header: 'Current Allocation %'
             }),
@@ -501,7 +547,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 (row) =>
                     calculateAllocationDifference(
                         calculateFinalAllocation(row, columnAverages, tierScoreSums),
-                        calculateCurrentAllocation(row, totalValue)
+                        calculateCurrentAllocation(row, totalValueRef.current)
                     ),
                 {
                     id: 'allocationDifference',
@@ -520,7 +566,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 }
             ),
             columnHelper.accessor(
-                (row) => calculateValueToAdd(row, calculateFinalAllocation(row, columnAverages, tierScoreSums), totalValue),
+                (row) =>
+                    calculateValueToAdd(row, calculateFinalAllocation(row, columnAverages, tierScoreSums), totalValueRef.current),
                 {
                     id: 'valueToAdd',
                     header: 'Value to Add (€)',
@@ -548,7 +595,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 }
             )
         ],
-        [columnAverages, tierScoreSums, totalValue, doneFunds, valueOverrides, editingFundId, allocationAmountNumber]
+        // totalValue/allocationAmountNumber/addMoneyAmounts are intentionally excluded: they change on every
+        // keystroke, and rebuilding `columns` would hand flexRender new cell function identities, remounting
+        // the per-row inputs mid-typing. Cells read the current values via the refs above instead.
+        [columnAverages, tierScoreSums, doneFunds, valueOverrides, editingFundId]
     );
 
     const finalAllocationSum = useMemo(
@@ -565,6 +615,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         () => totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         [totalValue]
     );
+
+    const addMoneySum = useMemo(() => {
+        const total = Object.values(addMoneyAmounts).reduce((sum, value) => sum + (Number(value) || 0), 0);
+        return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }, [addMoneyAmounts]);
 
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         try {
@@ -629,7 +684,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const isFinalAllocation = header.column.id === 'finalAllocation';
                                 const isAllocationAmount = header.column.id === 'allocationAmount';
                                 const isValue = header.column.id === 'value';
-                                const isSummed = isFinalAllocation || isValue;
+                                const isAddMoney = header.column.id === 'addMoney';
+                                const isSummed = isFinalAllocation || isValue || isAddMoney;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                 const value = isAveraged
@@ -640,6 +696,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     ? finalAllocationSum
                                     : isValue
                                     ? valueSum
+                                    : isAddMoney
+                                    ? addMoneySum
                                     : null;
                                 const tooltipTitle = isSummed ? 'sum of column' : 'average for column';
 
