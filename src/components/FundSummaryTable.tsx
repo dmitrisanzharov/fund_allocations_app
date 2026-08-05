@@ -760,7 +760,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                         +
                                                     </Button>
                                                 </Tooltip>
-                                                <Tooltip title='Enter an amount to allocate using the Final Allocation %' placement='top'>
+                                                <Tooltip title='Enter an amount to allocate using the Final Allocation %' placement='bottom'>
                                                     <TextField
                                                         size='small'
                                                         type='number'
@@ -797,6 +797,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 {headerGroup.headers.map((header) => {
                                     const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isValue = header.column.id === 'value';
+                                    const isAddMoney = header.column.id === 'addMoney';
                                     const isLatestAvailableDate = header.column.id === 'latestAvailableDate';
                                     const headerLabelTooltip = HEADER_LABEL_TOOLTIPS[header.column.id];
                                     const valueUpdateDaysOld =
@@ -817,6 +818,18 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             }}
                                         >
                                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                {isAddMoney && (
+                                                    <Tooltip title='Clear all Add Moneys entries' placement='top'>
+                                                        <Button
+                                                            variant='outlined'
+                                                            size='small'
+                                                            sx={{ ...outlinedButtonSx, backgroundColor: 'white', minWidth: 0, px: 1, alignSelf: 'flex-start', mb: 0.5 }}
+                                                            onClick={() => setAddMoneyAmounts({})}
+                                                        >
+                                                            -
+                                                        </Button>
+                                                    </Tooltip>
+                                                )}
                                                 {headerLabelTooltip ? (
                                                     <Tooltip title={headerLabelTooltip} placement='top'>
                                                         <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
