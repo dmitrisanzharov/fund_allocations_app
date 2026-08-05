@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import chroma from 'chroma-js';
 import {
     Alert,
     Box,
@@ -123,6 +124,13 @@ function calculateFundScore(
     ).filter((score): score is number => score !== null);
 
     return scores.length === 0 ? null : scores.reduce((sum, score) => sum + score, 0).toFixed(2);
+}
+
+const fundScoreColorScale = chroma.scale(['#ef5350', '#ffffff', '#66bb6a']);
+
+function getColorScaleBackground(value: number, min: number, max: number): string {
+    const t = max === min ? 0.5 : (value - min) / (max - min);
+    return fundScoreColorScale(t).hex();
 }
 
 function calculateTierScoreSums(
@@ -388,6 +396,15 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     );
 
     const tierScoreSums = useMemo(() => calculateTierScoreSums(funds, columnAverages), [funds, columnAverages]);
+
+    const fundScoreRange = useMemo(() => {
+        const scores = funds
+            .map((fund) => calculateFundScore(fund, columnAverages))
+            .filter((score): score is string => score !== null)
+            .map(Number);
+
+        return scores.length === 0 ? null : { min: Math.min(...scores), max: Math.max(...scores) };
+    }, [funds, columnAverages]);
 
     const totalValue = useMemo(() => effectiveFunds.reduce((sum, fund) => sum + fund.value, 0), [effectiveFunds]);
 
@@ -950,6 +967,23 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                     <Tooltip title={`Data is: ${daysOld} days old`} placement='top'>
                                                         <span>{cellContent}</span>
                                                     </Tooltip>
+                                                </TableCell>
+                                            );
+                                        }
+                                    }
+
+                                    if (cell.column.id === 'fundScore') {
+                                        const raw = cell.getValue<string | null>();
+                                        if (raw !== null && fundScoreRange) {
+                                            const backgroundColor = getColorScaleBackground(
+                                                Number(raw),
+                                                fundScoreRange.min,
+                                                fundScoreRange.max
+                                            );
+
+                                            return (
+                                                <TableCell key={cell.id} sx={{ backgroundColor }}>
+                                                    {cellContent}
                                                 </TableCell>
                                             );
                                         }
