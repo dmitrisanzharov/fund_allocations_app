@@ -63,7 +63,7 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
 
 const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     totalReturn: 'Total Returns %, including dividends',
-    valueToAdd: 'if in minus / red = over invested (so can sell here)... if in plus / green = under invested, need to add'
+    valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add'
 };
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
@@ -581,11 +581,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
                         })}`;
-                        const color = valueToAdd > 0 ? 'green' : valueToAdd < 0 ? 'red' : undefined;
+                        const color = valueToAdd > 0 ? 'red' : valueToAdd < 0 ? 'green' : undefined;
 
                         return (
                             <Tooltip
-                                title='if in minus / red = over invested (so can sell here)... if in plus / green = under invested, need to add'
+                                title='if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add'
                                 placement='top'
                             >
                                 <span style={{ color }}>{formatted}</span>
