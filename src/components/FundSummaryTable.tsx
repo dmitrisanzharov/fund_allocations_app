@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import chroma from 'chroma-js';
@@ -32,7 +32,11 @@ import CloseIcon from '@mui/icons-material/Close';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { createColumnHelper, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
+import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
 import { outlinedButtonSx } from '../styles';
@@ -48,6 +52,7 @@ const STALE_DATA_BACKGROUND = '#ef9a9a';
 const OLDEST_DATE_BACKGROUND = 'lightgray';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'fundSummaryTable.columnVisibility';
+const COLUMN_ORDER_STORAGE_KEY = 'fundSummaryTable.columnOrder';
 const DONE_FUNDS_STORAGE_KEY = 'fundSummaryTable.doneFunds';
 
 const HEADER_BACKGROUND = 'lightgray';
@@ -190,6 +195,45 @@ function calculateFinalAllocation(
 
 function calculateCurrentAllocation(row: FundRow, totalValue: number): string | null {
     return totalValue > 0 ? ((row.value / totalValue) * 100).toFixed(2) : null;
+}
+
+function SortableColumnMenuItem({
+    id,
+    label,
+    checked,
+    onToggle
+}: {
+    id: string;
+    label: string;
+    checked: boolean;
+    onToggle: (event: MouseEvent<HTMLLIElement>) => void;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    return (
+        <MenuItem
+            ref={setNodeRef}
+            dense
+            onClick={onToggle}
+            style={{
+                transform: CSS.Translate.toString(transform),
+                transition,
+                opacity: isDragging ? 0.5 : 1
+            }}
+        >
+            <IconButton
+                size='small'
+                {...attributes}
+                {...listeners}
+                onClick={(event) => event.stopPropagation()}
+                sx={{ cursor: 'grab', mr: 0.5 }}
+            >
+                <DragIndicatorIcon fontSize='small' />
+            </IconButton>
+            <Checkbox size='small' checked={checked} />
+            <ListItemText primary={label} />
+        </MenuItem>
+    );
 }
 
 const COPIED_EVENT = 'fund-summary-table:copied';
@@ -659,6 +703,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
             return {};
         }
     });
+    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        try {
+            const stored = localStorage.getItem(COLUMN_ORDER_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    });
     const [columnMenuAnchor, setColumnMenuAnchor] = useState<null | HTMLElement>(null);
     const [copiedSnackbarOpen, setCopiedSnackbarOpen] = useState(false);
 
@@ -667,21 +719,42 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     }, [columnVisibility]);
 
     useEffect(() => {
+        localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(columnOrder));
+    }, [columnOrder]);
+
+    useEffect(() => {
         const handleCopied = () => setCopiedSnackbarOpen(true);
         window.addEventListener(COPIED_EVENT, handleCopied);
         return () => window.removeEventListener(COPIED_EVENT, handleCopied);
     }, []);
 
+    const columnDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
     const table = useReactTable({
         data: effectiveFunds,
         columns,
-        state: { columnVisibility, sorting },
+        state: { columnVisibility, sorting, columnOrder },
         onColumnVisibilityChange: setColumnVisibility,
         onSortingChange: setSorting,
+        onColumnOrderChange: setColumnOrder,
         enableSortingRemoval: false,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel()
     });
+
+    const orderedLeafColumns = table.getAllLeafColumns();
+
+    const handleColumnDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        const ids = orderedLeafColumns.map((column) => column.id);
+        const oldIndex = ids.indexOf(String(active.id));
+        const newIndex = ids.indexOf(String(over.id));
+        setColumnOrder(arrayMove(ids, oldIndex, newIndex));
+    };
 
     return (
         <Box>
@@ -696,14 +769,22 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                     open={Boolean(columnMenuAnchor)}
                     onClose={() => setColumnMenuAnchor(null)}
                 >
-                    {table.getAllLeafColumns().map((column) => (
-                        <MenuItem key={column.id} dense onClick={column.getToggleVisibilityHandler()}>
-                            <Checkbox size='small' checked={column.getIsVisible()} />
-                            <ListItemText
-                                primary={typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id}
-                            />
-                        </MenuItem>
-                    ))}
+                    <DndContext sensors={columnDragSensors} onDragEnd={handleColumnDragEnd}>
+                        <SortableContext
+                            items={orderedLeafColumns.map((column) => column.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            {orderedLeafColumns.map((column) => (
+                                <SortableColumnMenuItem
+                                    key={column.id}
+                                    id={column.id}
+                                    label={typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id}
+                                    checked={column.getIsVisible()}
+                                    onToggle={column.getToggleVisibilityHandler()}
+                                />
+                            ))}
+                        </SortableContext>
+                    </DndContext>
                 </Menu>
             </Box>
             <TableContainer>
