@@ -731,16 +731,46 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             </Box>
                                         )}
                                         {isAllocationAmount && (
-                                            <Tooltip title='Enter an amount to allocate using the Final Allocation %' placement='top'>
-                                                <TextField
-                                                    size='small'
-                                                    type='number'
-                                                    placeholder='Amount'
-                                                    value={allocationInputAmount}
-                                                    onChange={(event) => setAllocationInputAmount(event.target.value)}
-                                                    sx={{ width: 110, backgroundColor: 'white', borderRadius: 1 }}
-                                                />
-                                            </Tooltip>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+                                                <Tooltip title='Copy each Allocation Amount into the Add Moneys column' placement='top'>
+                                                    <Button
+                                                        variant='outlined'
+                                                        size='small'
+                                                        sx={{ ...outlinedButtonSx, backgroundColor: 'white', minWidth: 0, px: 1 }}
+                                                        onClick={() =>
+                                                            setAddMoneyAmounts((prev) => {
+                                                                const next = { ...prev };
+                                                                funds.forEach((fund) => {
+                                                                    const finalAllocation = calculateFinalAllocation(
+                                                                        fund,
+                                                                        columnAverages,
+                                                                        tierScoreSums
+                                                                    );
+                                                                    if (finalAllocation === null) {
+                                                                        return;
+                                                                    }
+                                                                    const amount =
+                                                                        (Number(finalAllocation) / 100) * allocationAmountNumber;
+                                                                    next[fund.id] = amount.toFixed(2);
+                                                                });
+                                                                return next;
+                                                            })
+                                                        }
+                                                    >
+                                                        +
+                                                    </Button>
+                                                </Tooltip>
+                                                <Tooltip title='Enter an amount to allocate using the Final Allocation %' placement='top'>
+                                                    <TextField
+                                                        size='small'
+                                                        type='number'
+                                                        placeholder='Amount'
+                                                        value={allocationInputAmount}
+                                                        onChange={(event) => setAllocationInputAmount(event.target.value)}
+                                                        sx={{ width: 110, backgroundColor: 'white', borderRadius: 1 }}
+                                                    />
+                                                </Tooltip>
+                                            </Box>
                                         )}
                                         {(isAveraged || isSummed || isFundScore) && (
                                             <Tooltip title={tooltipTitle} placement='top'>
