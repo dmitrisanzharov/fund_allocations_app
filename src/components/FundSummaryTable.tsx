@@ -29,7 +29,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { createColumnHelper, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
 import { outlinedButtonSx } from '../styles';
@@ -364,6 +366,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const [allocationInputAmount, setAllocationInputAmount] = useState('');
     const allocationAmountNumber = Number(allocationInputAmount) || 0;
     const [addMoneyAmounts, setAddMoneyAmounts] = useState<Record<string, string>>({});
+    const [sorting, setSorting] = useState<SortingState>([]);
 
     const effectiveFunds = useMemo(
         () =>
@@ -449,7 +452,17 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
             ),
             columnHelper.accessor((row) => calculateFundScore(row, columnAverages), {
                 id: 'fundScore',
-                header: 'Fund Score'
+                header: 'Fund Score',
+                enableSorting: true,
+                sortDescFirst: true,
+                sortingFn: (rowA, rowB, columnId) => {
+                    const a = rowA.getValue<string | null>(columnId);
+                    const b = rowB.getValue<string | null>(columnId);
+                    if (a === null && b === null) return 0;
+                    if (a === null) return -1;
+                    if (b === null) return 1;
+                    return Number(a) - Number(b);
+                }
             }),
             columnHelper.accessor((row) => (FUND_TIER_OBJ[row.tier].maxAllocation * 100).toFixed(2), {
                 id: 'maxAllocation',
@@ -645,9 +658,12 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const table = useReactTable({
         data: effectiveFunds,
         columns,
-        state: { columnVisibility },
+        state: { columnVisibility, sorting },
         onColumnVisibilityChange: setColumnVisibility,
-        getCoreRowModel: getCoreRowModel()
+        onSortingChange: setSorting,
+        enableSortingRemoval: false,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel()
     });
 
     return (
@@ -808,6 +824,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                         isLatestAvailableDate && oldestLatestAvailableDate
                                             ? dayjs().startOf('day').diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
                                             : null;
+                                    const canSort = header.column.id === 'fundScore' && header.column.getCanSort();
+                                    const sortDirection = header.column.getIsSorted();
 
                                     return (
                                         <TableCell
@@ -830,13 +848,38 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                         </Button>
                                                     </Tooltip>
                                                 )}
-                                                {headerLabelTooltip ? (
-                                                    <Tooltip title={headerLabelTooltip} placement='top'>
-                                                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                                                    </Tooltip>
-                                                ) : (
-                                                    <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                                                )}
+                                                {(() => {
+                                                    const label = (
+                                                        <Box
+                                                            sx={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 0.25,
+                                                                cursor: canSort ? 'pointer' : undefined
+                                                            }}
+                                                            onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                                                        >
+                                                            <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                                            {canSort &&
+                                                                (sortDirection === 'asc' ? (
+                                                                    <ArrowUpwardIcon fontSize='inherit' />
+                                                                ) : (
+                                                                    <ArrowDownwardIcon
+                                                                        fontSize='inherit'
+                                                                        sx={{ opacity: sortDirection === 'desc' ? 1 : 0.3 }}
+                                                                    />
+                                                                ))}
+                                                        </Box>
+                                                    );
+
+                                                    return headerLabelTooltip ? (
+                                                        <Tooltip title={headerLabelTooltip} placement='top'>
+                                                            {label}
+                                                        </Tooltip>
+                                                    ) : (
+                                                        label
+                                                    );
+                                                })()}
                                                 {isValue && oldestValueUpdateDate && valueUpdateDaysOld !== null && (
                                                     <Tooltip
                                                         title="Oldest fund value update date across funds"
