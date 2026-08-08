@@ -65,6 +65,7 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     averageYield: AVERAGED_HEADER_BACKGROUND,
     returnPerRisk: AVERAGED_HEADER_BACKGROUND,
     finalAllocation: ALLOCATION_HEADER_BACKGROUND,
+    idealAllocation: ALLOCATION_HEADER_BACKGROUND,
     allocationAmount: AVERAGED_HEADER_BACKGROUND,
     fundScore: FUND_SCORE_HEADER_BACKGROUND
 };
@@ -75,7 +76,8 @@ const COLUMN_MIN_WIDTHS: Record<string, number> = {
 
 const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     totalReturn: 'Total Returns %, including dividends',
-    valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add'
+    valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add',
+    idealAllocation: 'this is TOTAL PORTFOLIO VALUE * final allocation per cell'
 };
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
@@ -540,6 +542,20 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
             columnHelper.accessor((row) => calculateFinalAllocation(row, columnAverages, tierScoreSums), {
                 id: 'finalAllocation',
                 header: 'Final Allocation %'
+            }),
+            columnHelper.display({
+                id: 'idealAllocation',
+                header: 'Ideal Allocation',
+                cell: (info) => {
+                    const finalAllocation = calculateFinalAllocation(info.row.original, columnAverages, tierScoreSums);
+                    if (finalAllocation === null) {
+                        return null;
+                    }
+
+                    const amount = (Number(finalAllocation) / 100) * totalValueRef.current;
+
+                    return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
             }),
             columnHelper.display({
                 id: 'allocationAmount',
