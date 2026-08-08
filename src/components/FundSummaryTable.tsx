@@ -176,11 +176,8 @@ function calculateValueToAdd(row: FundRow, finalAllocation: string | null, total
     }
 
     const targetShare = Number(finalAllocation) / 100;
-    if (targetShare >= 1) {
-        return null;
-    }
 
-    return (targetShare * totalValue - row.value) / (1 - targetShare);
+    return targetShare * totalValue - row.value;
 }
 
 function calculateFinalAllocation(
