@@ -69,6 +69,10 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     fundScore: FUND_SCORE_HEADER_BACKGROUND
 };
 
+const COLUMN_MIN_WIDTHS: Record<string, number> = {
+    latestAvailableDate: 80
+};
+
 const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     totalReturn: 'Total Returns %, including dividends',
     valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add'
@@ -374,7 +378,7 @@ const baseColumns = [
         header: 'ISIN',
         cell: (info) => <CopyableCell label={info.getValue()} copyText={info.getValue()} />
     }),
-    columnHelper.accessor((row) => (row.latestAvailableDate ? dayjs(row.latestAvailableDate).format('DD/MM/YYYY') : null), {
+    columnHelper.accessor((row) => (row.latestAvailableDate ? dayjs(row.latestAvailableDate).format('DD-MMM-YYYY') : null), {
         id: 'latestAvailableDate',
         header: 'Latest Price Date'
     }),
@@ -799,6 +803,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const isAllocationAmount = header.column.id === 'allocationAmount';
                                 const isValue = header.column.id === 'value';
                                 const isAddMoney = header.column.id === 'addMoney';
+                                const isLatestAvailableDate = header.column.id === 'latestAvailableDate';
+                                const priceDataAgeDays =
+                                    isLatestAvailableDate && oldestLatestAvailableDate
+                                        ? dayjs().startOf('day').diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
+                                        : null;
                                 const isSummed = isFinalAllocation || isValue || isAddMoney;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
@@ -820,7 +829,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                         key={header.id}
                                         sx={{
                                             fontWeight: 'bold',
-                                            backgroundColor: highlightBackground
+                                            backgroundColor: highlightBackground,
+                                            minWidth: COLUMN_MIN_WIDTHS[header.column.id]
                                         }}
                                     >
                                         {isDone && (
@@ -902,6 +912,16 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 <span>based on: {analysisYears} years</span>
                                             </Tooltip>
                                         )}
+                                        {isLatestAvailableDate && priceDataAgeDays !== null && (
+                                            <Tooltip
+                                                title="NOW - lowest fund date available; so I can NOT search for data that doesn't exist"
+                                                placement='top'
+                                            >
+                                                <span>
+                                                    Data age: {priceDataAgeDays} {priceDataAgeDays === 1 ? 'day' : 'days'}
+                                                </span>
+                                            </Tooltip>
+                                        )}
                                     </TableCell>
                                 );
                             })}
@@ -912,15 +932,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isValue = header.column.id === 'value';
                                     const isAddMoney = header.column.id === 'addMoney';
-                                    const isLatestAvailableDate = header.column.id === 'latestAvailableDate';
                                     const headerLabelTooltip = HEADER_LABEL_TOOLTIPS[header.column.id];
                                     const valueUpdateDaysOld =
                                         isValue && oldestValueUpdateDate
                                             ? dayjs().startOf('day').diff(oldestValueUpdateDate.startOf('day'), 'day')
-                                            : null;
-                                    const priceDataAgeDays =
-                                        isLatestAvailableDate && oldestLatestAvailableDate
-                                            ? dayjs().startOf('day').diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
                                             : null;
                                     const canSort = header.column.id === 'fundScore' && header.column.getCanSort();
                                     const sortDirection = header.column.getIsSorted();
@@ -930,7 +945,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             key={header.id}
                                             sx={{
                                                 fontWeight: 'bold',
-                                                backgroundColor: highlightBackground
+                                                backgroundColor: highlightBackground,
+                                                minWidth: COLUMN_MIN_WIDTHS[header.column.id]
                                             }}
                                         >
                                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -989,16 +1005,6 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                         </span>
                                                     </Tooltip>
                                                 )}
-                                                {isLatestAvailableDate && priceDataAgeDays !== null && (
-                                                    <Tooltip
-                                                        title="NOW - lowest fund date available; so I can NOT search for data that doesn't exist"
-                                                        placement='top'
-                                                    >
-                                                        <span>
-                                                            (Data age: {priceDataAgeDays} {priceDataAgeDays === 1 ? 'day' : 'days'})
-                                                        </span>
-                                                    </Tooltip>
-                                                )}
                                             </Box>
                                         </TableCell>
                                     );
@@ -1027,7 +1033,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             return (
                                                 <TableCell
                                                     key={cell.id}
-                                                    sx={{ backgroundColor: OLDEST_DATE_BACKGROUND }}
+                                                    sx={{ backgroundColor: OLDEST_DATE_BACKGROUND, minWidth: COLUMN_MIN_WIDTHS[cell.column.id] }}
                                                 >
                                                     <Tooltip
                                                         title="This is the oldest latest-price date across all funds - it sets the app's 'as of date' and needs updating"
@@ -1043,7 +1049,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             return (
                                                 <TableCell
                                                     key={cell.id}
-                                                    sx={{ backgroundColor: STALE_DATA_BACKGROUND }}
+                                                    sx={{ backgroundColor: STALE_DATA_BACKGROUND, minWidth: COLUMN_MIN_WIDTHS[cell.column.id] }}
                                                 >
                                                     <Tooltip title={`Data is: ${daysOld} days old`} placement='top'>
                                                         <span>{cellContent}</span>
@@ -1070,7 +1076,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                         }
                                     }
 
-                                    return <TableCell key={cell.id}>{cellContent}</TableCell>;
+                                    return (
+                                        <TableCell key={cell.id} sx={{ minWidth: COLUMN_MIN_WIDTHS[cell.column.id] }}>
+                                            {cellContent}
+                                        </TableCell>
+                                    );
                                 })}
                             </TableRow>
                         ))}
