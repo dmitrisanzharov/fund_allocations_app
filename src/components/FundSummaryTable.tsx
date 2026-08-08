@@ -65,17 +65,19 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     averageYield: AVERAGED_HEADER_BACKGROUND,
     returnPerRisk: AVERAGED_HEADER_BACKGROUND,
     finalAllocation: ALLOCATION_HEADER_BACKGROUND,
+    idealAllocation: ALLOCATION_HEADER_BACKGROUND,
     allocationAmount: AVERAGED_HEADER_BACKGROUND,
     fundScore: FUND_SCORE_HEADER_BACKGROUND
 };
 
 const COLUMN_MIN_WIDTHS: Record<string, number> = {
-    latestAvailableDate: 80
+    latestAvailableDate: 90
 };
 
 const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     totalReturn: 'Total Returns %, including dividends',
-    valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add'
+    valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add',
+    idealAllocation: 'this is TOTAL PORTFOLIO VALUE * final allocation per cell'
 };
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
@@ -542,6 +544,20 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 header: 'Final Allocation %'
             }),
             columnHelper.display({
+                id: 'idealAllocation',
+                header: 'Ideal Allocation',
+                cell: (info) => {
+                    const finalAllocation = calculateFinalAllocation(info.row.original, columnAverages, tierScoreSums);
+                    if (finalAllocation === null) {
+                        return null;
+                    }
+
+                    const amount = (Number(finalAllocation) / 100) * totalValueRef.current;
+
+                    return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            }),
+            columnHelper.display({
                 id: 'allocationAmount',
                 header: 'Allocation Amount',
                 cell: (info) => {
@@ -694,6 +710,23 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         [totalValue]
     );
 
+    const idealAllocationTotal = useMemo(
+        () =>
+            funds.reduce((sum, fund) => {
+                const finalAllocation = calculateFinalAllocation(fund, columnAverages, tierScoreSums);
+                return finalAllocation === null ? sum : sum + (Number(finalAllocation) / 100) * totalValue;
+            }, 0),
+        [funds, columnAverages, tierScoreSums, totalValue]
+    );
+
+    const idealAllocationSum = useMemo(
+        () => idealAllocationTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        [idealAllocationTotal]
+    );
+
+    const isIdealAllocationBalanced =
+        totalValue === 0 || Math.abs(idealAllocationTotal - totalValue) <= Math.max(0.5, totalValue * 0.0005);
+
     const addMoneySum = useMemo(() => {
         const total = Object.values(addMoneyAmounts).reduce((sum, value) => sum + (Number(value) || 0), 0);
         return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -800,6 +833,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
                                 const isFundScore = header.column.id === 'fundScore';
                                 const isFinalAllocation = header.column.id === 'finalAllocation';
+                                const isIdealAllocation = header.column.id === 'idealAllocation';
                                 const isAllocationAmount = header.column.id === 'allocationAmount';
                                 const isValue = header.column.id === 'value';
                                 const isAddMoney = header.column.id === 'addMoney';
@@ -808,7 +842,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     isLatestAvailableDate && oldestLatestAvailableDate
                                         ? dayjs().startOf('day').diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
                                         : null;
-                                const isSummed = isFinalAllocation || isValue || isAddMoney;
+                                const isSummed = isFinalAllocation || isIdealAllocation || isValue || isAddMoney;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                 const value = isAveraged
@@ -817,6 +851,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     ? fundScoreAverage
                                     : isFinalAllocation
                                     ? finalAllocationSum
+                                    : isIdealAllocation
+                                    ? idealAllocationSum
                                     : isValue
                                     ? valueSum
                                     : isAddMoney
@@ -897,12 +933,29 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             </Box>
                                         )}
                                         {(isAveraged || isSummed || isFundScore) && (
-                                            <Tooltip title={tooltipTitle} placement='top'>
-                                                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                                                    <span>{value}</span>
-                                                    <InfoOutlinedIcon fontSize='small' />
-                                                </Box>
-                                            </Tooltip>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, textAlign: 'center' }}>
+                                                <Tooltip title={tooltipTitle} placement='top'>
+                                                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <span>{value}</span>
+                                                        <InfoOutlinedIcon fontSize='small' />
+                                                    </Box>
+                                                </Tooltip>
+                                                {isIdealAllocation &&
+                                                    (isIdealAllocationBalanced ? (
+                                                        <Tooltip title='Ideal Allocation total matches the Current Value total' placement='top'>
+                                                            <span style={{ color: 'black', fontSize: '0.7rem' }}>(correct)</span>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        <Tooltip
+                                                            title='Ideal Allocation total does NOT match the Current Value total'
+                                                            placement='top'
+                                                        >
+                                                            <span style={{ color: 'red', fontWeight: 'bold', fontSize: '1.4rem' }}>
+                                                                INCORRECT
+                                                            </span>
+                                                        </Tooltip>
+                                                    ))}
+                                            </Box>
                                         )}
                                         {isBasedOnPeriod && (
                                             <Tooltip

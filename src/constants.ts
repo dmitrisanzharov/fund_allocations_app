@@ -51,7 +51,7 @@ export const FUNDS = [
         name: 'iShares STOXX Global Select Dividend 100 UCITS (DE) ETF',
         isin: 'DE000A0F5UH1',
         symbol: 'ISPA',
-        value: 235828.10,
+        value: 235828.1,
         lastValueUpdateDate: '07/08/2026',
         pricesSheet: 'GlobalSelect_DE000A0F5UH1',
         dividendsSheet: 'GlobalSelect_DE000A0F5UH1_div',
@@ -67,6 +67,17 @@ export const FUNDS = [
         pricesSheet: 'VanGuard_IE00B8GKDB10',
         dividendsSheet: 'VanGuard_IE00B8GKDB10_div',
         tier: 'tier_1'
+    },
+    {
+        id: 'lgEuro',
+        name: 'L&G Europe ex-UK Quality Dividends Equal Weight UCITS ETF EUR Dist',
+        isin: 'IE00BMYDM919',
+        symbol: 'LGGE',
+        value: 0,
+        lastValueUpdateDate: '07/08/2026',
+        pricesSheet: 'LgEuro_IE00BMYDM919',
+        dividendsSheet: 'LgEuro_IE00BMYDM919_div',
+        tier: 'EU'
     },
     {
         id: 'invescoEu',
@@ -95,7 +106,7 @@ export const FUNDS = [
         name: 'iShares STOXX Europe 600 Banks UCITS (DE) ETF',
         isin: 'DE000A0F5UJ7',
         symbol: 'EXV1',
-        value: 35134.70,
+        value: 35134.7,
         lastValueUpdateDate: '07/08/2026',
         pricesSheet: 'iSharesEuBank_DE000A0F5UJ7',
         dividendsSheet: 'iSharesEuBank_DE000A0F5UJ7_div',

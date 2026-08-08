@@ -7,3 +7,8 @@
 
 ## APP functionality notes:
 - if 'latest price data' is older than 14 days, you get RED background and 'tooltip' to tell me how old is the data = this tells me I need to update it
+
+## AI calls the FIRST header row as 'summary header'
+- so we have 2 headers
+- 1. Summary header
+- 2. title row header
