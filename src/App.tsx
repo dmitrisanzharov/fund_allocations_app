@@ -60,6 +60,17 @@ function App() {
         vanguardConfig.taxRate
     );
 
+    const lgEuroConfig = getFundConfig('lgEuro');
+    const lgEuro = useFundSummary(
+        lgEuroConfig.name,
+        lgEuroConfig.isin,
+        lgEuroConfig.pricesSheet,
+        lgEuroConfig.dividendsSheet,
+        backDate,
+        asOfDate,
+        lgEuroConfig.taxRate
+    );
+
     const invescoEuConfig = getFundConfig('invescoEu');
     const invescoEu = useFundSummary(
         invescoEuConfig.name,
@@ -128,6 +139,13 @@ function App() {
                 lastValueUpdateDate: vanguardConfig.lastValueUpdateDate
             },
             {
+                ...lgEuro,
+                id: lgEuroConfig.id,
+                tier: lgEuroConfig.tier,
+                value: lgEuroConfig.value,
+                lastValueUpdateDate: lgEuroConfig.lastValueUpdateDate
+            },
+            {
                 ...invescoEu,
                 id: invescoEuConfig.id,
                 tier: invescoEuConfig.tier,
@@ -156,7 +174,7 @@ function App() {
                 lastValueUpdateDate: ishareUkConfig.lastValueUpdateDate
             }
         ],
-        [vaneck, globalSelect, vanguard, invescoEu, ishareEuSelect, ishareEuBank, ishareUk]
+        [vaneck, globalSelect, vanguard, lgEuro, invescoEu, ishareEuSelect, ishareEuBank, ishareUk]
     );
 
     // most recent date for which every fund has data, i.e. the lowest of each fund's latestAvailableDate
