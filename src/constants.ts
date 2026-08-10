@@ -129,7 +129,7 @@ export const FUNDS = [
         isin: 'IE00B0M63060',
         symbol: 'IUKD',
         value: 32376.75,
-        lastValueUpdateDate: '07/08/2026',
+        lastValueUpdateDate: '10/08/2026',
         pricesSheet: 'iSharesUK_IE00B0M63060',
         dividendsSheet: 'iSharesUK_IE00B0M63060_div',
         tier: 'tier_2'

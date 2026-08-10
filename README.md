@@ -10,5 +10,5 @@
 
 ## AI calls the FIRST header row as 'summary header'
 - so we have 2 headers
-- 1. Summary header
-- 2. title row header
+- 1. Summary header - is the top header
+- 2. title row header - is the main header

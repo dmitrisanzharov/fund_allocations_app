@@ -479,6 +479,12 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         return dates.length === 0 ? null : dates.reduce((oldest, date) => (date.isBefore(oldest) ? date : oldest));
     }, [funds]);
 
+    const isValueUpdateOutOfSync = useMemo(() => {
+        const dates = funds.map((fund) => dayjs(fund.lastValueUpdateDate, 'DD/MM/YYYY')).filter((date) => date.isValid());
+
+        return dates.length > 1 && !dates.every((date) => date.isSame(dates[0], 'day'));
+    }, [funds]);
+
     const [doneFunds, setDoneFunds] = useState<Record<string, boolean>>(() => {
         try {
             const stored = localStorage.getItem(DONE_FUNDS_STORAGE_KEY);
@@ -979,8 +985,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
                                 {headerGroup.headers.map((header) => {
-                                    const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isValue = header.column.id === 'value';
+                                    const highlightBackground = isValue && isValueUpdateOutOfSync
+                                        ? STALE_DATA_BACKGROUND
+                                        : HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isAddMoney = header.column.id === 'addMoney';
                                     const headerLabelTooltip = HEADER_LABEL_TOOLTIPS[header.column.id];
                                     const valueUpdateDaysOld =
@@ -1053,6 +1061,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                             ({oldestValueUpdateDate.format('DD-MMM-YYYY')}, {valueUpdateDaysOld}{' '}
                                                             {valueUpdateDaysOld === 1 ? 'day' : 'days'})
                                                         </span>
+                                                    </Tooltip>
+                                                )}
+                                                {isValue && isValueUpdateOutOfSync && (
+                                                    <Tooltip
+                                                        title="One of the funds is OUT OF SYNC - not all Current Value figures were last updated on the same date"
+                                                        placement='top'
+                                                    >
+                                                        <span style={{ color: 'red', fontWeight: 'bold' }}>OUT OF SYNC</span>
                                                     </Tooltip>
                                                 )}
                                             </Box>
