@@ -70,13 +70,24 @@ export const FUNDS = [
     },
     {
         id: 'lgEuro',
-        name: 'L&G Europe ex-UK Quality Dividends Equal Weight UCITS ETF EUR Dist',
+        name: 'L&G Euro ex-UK Qlty Div Eql Wght UCITS ETF EUR Dis',
         isin: 'IE00BMYDM919',
         symbol: 'LGGE',
         value: 0,
         lastValueUpdateDate: '07/08/2026',
         pricesSheet: 'LgEuro_IE00BMYDM919',
         dividendsSheet: 'LgEuro_IE00BMYDM919_div',
+        tier: 'EU'
+    },
+    {
+        id: 'wisdomTreEu',
+        name: 'WisdomTree Europe High Dividend UCITS ETF',
+        isin: 'IE00BQZJBX31',
+        symbol: 'WTEE',
+        value: 0,
+        lastValueUpdateDate: '07/08/2026',
+        pricesSheet: 'WisdomTreEu_IE00BQZJBX31',
+        dividendsSheet: 'WisdomTreEu_IE00BQZJBX31_div',
         tier: 'EU'
     },
     {
