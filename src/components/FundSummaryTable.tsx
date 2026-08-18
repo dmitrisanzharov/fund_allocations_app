@@ -61,6 +61,9 @@ const QUARTER_DIVIDEND_AMOUNT_COLUMN_QUARTERS: Record<string, QuarterKey> = Obje
 const QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS: Record<string, QuarterKey> = Object.fromEntries(
     QUARTER_KEYS.map((quarter) => [`${quarter}DividendPercent`, quarter])
 );
+const QUARTER_DIVIDEND_DATE_COLUMN_QUARTERS: Record<string, QuarterKey> = Object.fromEntries(
+    QUARTER_KEYS.map((quarter) => [`${quarter}DividendDate`, quarter])
+);
 
 const STALE_DATA_THRESHOLD_DAYS = 14;
 const STALE_DATA_BACKGROUND = '#ef9a9a';
@@ -820,6 +823,31 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         [funds]
     );
 
+    const quarterlyDividendMonthlyBreakdown = useMemo(() => {
+        const breakdown = {} as Record<QuarterKey, { month: string; total: number }[]>;
+
+        QUARTER_KEYS.forEach((quarter) => {
+            const totalsByMonth = new Map<number, number>();
+
+            effectiveFunds.forEach((fund) => {
+                const estimate = fund.quarterlyDividendEstimates[quarter];
+                if (!estimate.estimatedDate || estimate.percentage === 0) {
+                    return;
+                }
+
+                const monthIndex = dayjs(estimate.estimatedDate).month();
+                const amount = fund.value * (estimate.percentage / 100);
+                totalsByMonth.set(monthIndex, (totalsByMonth.get(monthIndex) ?? 0) + amount);
+            });
+
+            breakdown[quarter] = Array.from(totalsByMonth.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([monthIndex, total]) => ({ month: dayjs().month(monthIndex).format('MMM'), total }));
+        });
+
+        return breakdown;
+    }, [effectiveFunds]);
+
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         try {
             const stored = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
@@ -934,6 +962,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const isQuarterDividendAmount = dividendAmountQuarter !== undefined;
                                 const dividendPercentQuarter = QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS[header.column.id];
                                 const isQuarterDividendPercent = dividendPercentQuarter !== undefined;
+                                const dividendDateQuarter = QUARTER_DIVIDEND_DATE_COLUMN_QUARTERS[header.column.id];
+                                const isQuarterDividendDate = dividendDateQuarter !== undefined;
                                 const isSummed =
                                     isFinalAllocation || isIdealAllocation || isValue || isAddMoney || isQuarterDividendAmount;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
@@ -1053,6 +1083,24 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                         </Tooltip>
                                                     ))}
                                             </Box>
+                                        )}
+                                        {isQuarterDividendDate && (
+                                            <Tooltip
+                                                title='Estimated total payment per month this quarter, summed across all funds paying that month (based on Current Value)'
+                                                placement='top'
+                                            >
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].length === 0 ? (
+                                                        <span>—</span>
+                                                    ) : (
+                                                        quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(({ month, total }) => (
+                                                            <span key={month}>
+                                                                {month}: {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                            </span>
+                                                        ))
+                                                    )}
+                                                </Box>
+                                            </Tooltip>
                                         )}
                                         {isBasedOnPeriod && (
                                             <Tooltip
