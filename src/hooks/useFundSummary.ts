@@ -4,6 +4,7 @@ import { useSheetData } from './useSheetData';
 import { DividendRow, PriceRow } from '../services/googleSheets';
 import { isWithinRange } from '../utils/dateRange';
 import { calculateAnnualizedReturn, calculateAnnualizedVolatility, calculateReturnPerRisk } from '../utils/riskMetrics';
+import { calculateQuarterlyDividendEstimates, QuarterKey, QuarterlyDividendEstimate } from '../utils/dividendEstimates';
 
 export interface FundSummary {
     name: string;
@@ -18,6 +19,7 @@ export interface FundSummary {
     correctDifferenceAsPercent: string | null;
     averageDividendYield: string | null;
     returnPerRisk: string | null;
+    quarterlyDividendEstimates: Record<QuarterKey, QuarterlyDividendEstimate>;
 }
 
 export function useFundSummary(
@@ -101,6 +103,12 @@ export function useFundSummary(
         return (total / filteredDividends.length).toFixed(2);
     }, [filteredDividends, netOfTaxFactor]);
 
+    // estimated per-quarter dividend %/date, based on ALL historical payments for this fund (not the selected analysis range)
+    const quarterlyDividendEstimates = useMemo(
+        () => calculateQuarterlyDividendEstimates(dividends.rows, prices.rows, netOfTaxFactor),
+        [dividends.rows, prices.rows, netOfTaxFactor]
+    );
+
     // annualized total return (incl. dividends) divided by annualized volatility of daily prices
     const returnPerRisk = useMemo(() => {
         if (!priceDifference || !totalValueIncludingDividends || sortedPrices.length < 3) {
@@ -135,5 +143,6 @@ export function useFundSummary(
         correctDifferenceAsPercent: totalValueIncludingDividends?.correctDifferenceAsPercent ?? null,
         averageDividendYield,
         returnPerRisk,
+        quarterlyDividendEstimates,
     };
 }

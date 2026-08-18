@@ -40,12 +40,30 @@ import { CSS } from '@dnd-kit/utilities';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
 import { outlinedButtonSx } from '../styles';
+import { QUARTER_KEYS, QUARTER_START_MONTH, QuarterKey } from '../utils/dividendEstimates';
 
 dayjs.extend(customParseFormat);
 
 type FundRow = FundSummary & { tier: FundTierKey; id: string; value: number; lastValueUpdateDate: string };
 
 const AVERAGED_COLUMN_IDS = ['totalReturn', 'averageYield', 'returnPerRisk'] as const;
+const DIVIDEND_ESTIMATE_HEADER_BACKGROUND_LIGHT = '#90caf9';
+const DIVIDEND_ESTIMATE_HEADER_BACKGROUND_DARK = '#1976d2';
+const DIVIDEND_ESTIMATE_HEADER_BACKGROUNDS: Record<string, string> = {
+    Q1: DIVIDEND_ESTIMATE_HEADER_BACKGROUND_DARK,
+    Q2: DIVIDEND_ESTIMATE_HEADER_BACKGROUND_LIGHT,
+    Q3: DIVIDEND_ESTIMATE_HEADER_BACKGROUND_DARK,
+    Q4: DIVIDEND_ESTIMATE_HEADER_BACKGROUND_LIGHT
+};
+const QUARTER_DIVIDEND_AMOUNT_COLUMN_QUARTERS: Record<string, QuarterKey> = Object.fromEntries(
+    QUARTER_KEYS.map((quarter) => [`${quarter}DividendAmount`, quarter])
+);
+const QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS: Record<string, QuarterKey> = Object.fromEntries(
+    QUARTER_KEYS.map((quarter) => [`${quarter}DividendPercent`, quarter])
+);
+const QUARTER_DIVIDEND_DATE_COLUMN_QUARTERS: Record<string, QuarterKey> = Object.fromEntries(
+    QUARTER_KEYS.map((quarter) => [`${quarter}DividendDate`, quarter])
+);
 
 const STALE_DATA_THRESHOLD_DAYS = 14;
 const STALE_DATA_BACKGROUND = '#ef9a9a';
@@ -67,17 +85,40 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
     finalAllocation: ALLOCATION_HEADER_BACKGROUND,
     idealAllocation: ALLOCATION_HEADER_BACKGROUND,
     allocationAmount: AVERAGED_HEADER_BACKGROUND,
-    fundScore: FUND_SCORE_HEADER_BACKGROUND
+    fundScore: FUND_SCORE_HEADER_BACKGROUND,
+    ...Object.fromEntries(
+        QUARTER_KEYS.flatMap((quarter) => [
+            [`${quarter}DividendPercent`, DIVIDEND_ESTIMATE_HEADER_BACKGROUNDS[quarter]],
+            [`${quarter}DividendDate`, DIVIDEND_ESTIMATE_HEADER_BACKGROUNDS[quarter]],
+            [`${quarter}DividendAmount`, DIVIDEND_ESTIMATE_HEADER_BACKGROUNDS[quarter]]
+        ])
+    )
 };
 
 const COLUMN_MIN_WIDTHS: Record<string, number> = {
-    latestAvailableDate: 90
+    latestAvailableDate: 90,
+    ...Object.fromEntries(QUARTER_KEYS.map((quarter) => [`${quarter}DividendDate`, 90]))
 };
 
 const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     totalReturn: 'Total Returns %, including dividends',
     valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add',
-    idealAllocation: 'this is TOTAL PORTFOLIO VALUE * final allocation per cell'
+    idealAllocation: 'this is TOTAL PORTFOLIO VALUE * final allocation per cell',
+    ...Object.fromEntries(
+        QUARTER_KEYS.map((quarter) => [
+            `${quarter}DividendPercent`,
+            'Average of (dividend amount / fund price at payment date), net of tax, for all payments made in this calendar quarter (any year)'
+        ])
+    ),
+    ...Object.fromEntries(
+        QUARTER_KEYS.map((quarter) => [
+            `${quarter}DividendDate`,
+            'Estimated from the average historical payment day within this quarter, projected to the next occurrence'
+        ])
+    ),
+    ...Object.fromEntries(
+        QUARTER_KEYS.map((quarter) => [`${quarter}DividendAmount`, 'Estimated % applied to Current Value'])
+    )
 };
 
 const COLUMN_WEIGHTS: Record<(typeof AVERAGED_COLUMN_IDS)[number], number> = {
@@ -405,7 +446,28 @@ const baseColumns = [
     columnHelper.accessor((row) => row.returnPerRisk, {
         id: 'returnPerRisk',
         header: 'Return per Risk'
-    })
+    }),
+    ...QUARTER_KEYS.flatMap((quarter) => [
+        columnHelper.accessor((row) => row.quarterlyDividendEstimates[quarter].percentage, {
+            id: `${quarter}DividendPercent`,
+            header: `${quarter} Est. Dividend %`,
+            cell: (info) => `${info.getValue().toFixed(2)}%`
+        }),
+        columnHelper.accessor((row) => row.quarterlyDividendEstimates[quarter].estimatedDate, {
+            id: `${quarter}DividendDate`,
+            header: `${quarter} Est. Payment Date`,
+            cell: (info) => {
+                const value = info.getValue();
+                return value ? dayjs(value).format('DD-MMM-YYYY') : '—';
+            }
+        }),
+        columnHelper.accessor((row) => row.value * (row.quarterlyDividendEstimates[quarter].percentage / 100), {
+            id: `${quarter}DividendAmount`,
+            header: `${quarter} Est. Dividend (€)`,
+            cell: (info) =>
+                info.getValue().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        })
+    ])
 ];
 
 interface FundSummaryTableProps {
@@ -735,6 +797,59 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }, [addMoneyAmounts]);
 
+    const quarterlyDividendAmountSums = useMemo(
+        () =>
+            Object.fromEntries(
+                QUARTER_KEYS.map((quarter) => {
+                    const total = effectiveFunds.reduce(
+                        (sum, fund) => sum + fund.value * (fund.quarterlyDividendEstimates[quarter].percentage / 100),
+                        0
+                    );
+                    return [quarter, total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })];
+                })
+            ) as Record<QuarterKey, string>,
+        [effectiveFunds]
+    );
+
+    const quarterlyDividendPercentAverages = useMemo(
+        () =>
+            Object.fromEntries(
+                QUARTER_KEYS.map((quarter) => {
+                    const percentages = funds.map((fund) => fund.quarterlyDividendEstimates[quarter].percentage);
+                    const average = percentages.reduce((sum, value) => sum + value, 0) / percentages.length;
+                    return [quarter, average.toFixed(2)];
+                })
+            ) as Record<QuarterKey, string>,
+        [funds]
+    );
+
+    const quarterlyDividendMonthlyBreakdown = useMemo(() => {
+        const breakdown = {} as Record<QuarterKey, { month: string; total: number }[]>;
+
+        QUARTER_KEYS.forEach((quarter) => {
+            const totalsByMonth = new Map<number, number>();
+
+            effectiveFunds.forEach((fund) => {
+                const estimate = fund.quarterlyDividendEstimates[quarter];
+                if (!estimate.estimatedDate || estimate.percentage === 0) {
+                    return;
+                }
+
+                const monthIndex = dayjs(estimate.estimatedDate).month();
+                const amount = fund.value * (estimate.percentage / 100);
+                totalsByMonth.set(monthIndex, (totalsByMonth.get(monthIndex) ?? 0) + amount);
+            });
+
+            const quarterStartMonth = QUARTER_START_MONTH[quarter];
+            breakdown[quarter] = [quarterStartMonth, quarterStartMonth + 1, quarterStartMonth + 2].map((monthIndex) => ({
+                month: dayjs().month(monthIndex).format('MMM'),
+                total: totalsByMonth.get(monthIndex) ?? 0
+            }));
+        });
+
+        return breakdown;
+    }, [effectiveFunds]);
+
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         try {
             const stored = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
@@ -845,7 +960,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     isLatestAvailableDate && oldestLatestAvailableDate
                                         ? dayjs().startOf('day').diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
                                         : null;
-                                const isSummed = isFinalAllocation || isIdealAllocation || isValue || isAddMoney;
+                                const dividendAmountQuarter = QUARTER_DIVIDEND_AMOUNT_COLUMN_QUARTERS[header.column.id];
+                                const isQuarterDividendAmount = dividendAmountQuarter !== undefined;
+                                const dividendPercentQuarter = QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS[header.column.id];
+                                const isQuarterDividendPercent = dividendPercentQuarter !== undefined;
+                                const dividendDateQuarter = QUARTER_DIVIDEND_DATE_COLUMN_QUARTERS[header.column.id];
+                                const isQuarterDividendDate = dividendDateQuarter !== undefined;
+                                const isSummed =
+                                    isFinalAllocation || isIdealAllocation || isValue || isAddMoney || isQuarterDividendAmount;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                 const value = isAveraged
@@ -860,6 +982,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     ? valueSum
                                     : isAddMoney
                                     ? addMoneySum
+                                    : isQuarterDividendAmount
+                                    ? quarterlyDividendAmountSums[dividendAmountQuarter]
+                                    : isQuarterDividendPercent
+                                    ? `${quarterlyDividendPercentAverages[dividendPercentQuarter]}%`
                                     : null;
                                 const tooltipTitle = isSummed ? 'sum of column' : 'average for column';
 
@@ -935,7 +1061,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 </Tooltip>
                                             </Box>
                                         )}
-                                        {(isAveraged || isSummed || isFundScore) && (
+                                        {(isAveraged || isSummed || isFundScore || isQuarterDividendPercent) && (
                                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, textAlign: 'center' }}>
                                                 <Tooltip title={tooltipTitle} placement='top'>
                                                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
@@ -959,6 +1085,20 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                         </Tooltip>
                                                     ))}
                                             </Box>
+                                        )}
+                                        {isQuarterDividendDate && (
+                                            <Tooltip
+                                                title='Estimated total payment per month this quarter, summed across all funds paying that month (based on Current Value)'
+                                                placement='top'
+                                            >
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(({ month, total }) => (
+                                                        <span key={month}>
+                                                            {month}: {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                        </span>
+                                                    ))}
+                                                </Box>
+                                            </Tooltip>
                                         )}
                                         {isBasedOnPeriod && (
                                             <Tooltip
