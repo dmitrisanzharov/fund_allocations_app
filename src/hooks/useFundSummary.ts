@@ -105,8 +105,8 @@ export function useFundSummary(
 
     // estimated per-quarter dividend %/date, based on ALL historical payments for this fund (not the selected analysis range)
     const quarterlyDividendEstimates = useMemo(
-        () => calculateQuarterlyDividendEstimates(dividends.rows, netOfTaxFactor),
-        [dividends.rows, netOfTaxFactor]
+        () => calculateQuarterlyDividendEstimates(dividends.rows, prices.rows, netOfTaxFactor),
+        [dividends.rows, prices.rows, netOfTaxFactor]
     );
 
     // annualized total return (incl. dividends) divided by annualized volatility of daily prices

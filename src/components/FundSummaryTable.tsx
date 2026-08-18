@@ -58,6 +58,9 @@ const DIVIDEND_ESTIMATE_HEADER_BACKGROUNDS: Record<string, string> = {
 const QUARTER_DIVIDEND_AMOUNT_COLUMN_QUARTERS: Record<string, QuarterKey> = Object.fromEntries(
     QUARTER_KEYS.map((quarter) => [`${quarter}DividendAmount`, quarter])
 );
+const QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS: Record<string, QuarterKey> = Object.fromEntries(
+    QUARTER_KEYS.map((quarter) => [`${quarter}DividendPercent`, quarter])
+);
 
 const STALE_DATA_THRESHOLD_DAYS = 14;
 const STALE_DATA_BACKGROUND = '#ef9a9a';
@@ -101,7 +104,7 @@ const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     ...Object.fromEntries(
         QUARTER_KEYS.map((quarter) => [
             `${quarter}DividendPercent`,
-            'Average of historical dividend Yield %, net of tax, for all payments made in this calendar quarter (any year)'
+            'Average of (dividend amount / fund price at payment date), net of tax, for all payments made in this calendar quarter (any year)'
         ])
     ),
     ...Object.fromEntries(
@@ -805,6 +808,18 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         [effectiveFunds]
     );
 
+    const quarterlyDividendPercentAverages = useMemo(
+        () =>
+            Object.fromEntries(
+                QUARTER_KEYS.map((quarter) => {
+                    const percentages = funds.map((fund) => fund.quarterlyDividendEstimates[quarter].percentage);
+                    const average = percentages.reduce((sum, value) => sum + value, 0) / percentages.length;
+                    return [quarter, average.toFixed(2)];
+                })
+            ) as Record<QuarterKey, string>,
+        [funds]
+    );
+
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         try {
             const stored = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
@@ -917,6 +932,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                         : null;
                                 const dividendAmountQuarter = QUARTER_DIVIDEND_AMOUNT_COLUMN_QUARTERS[header.column.id];
                                 const isQuarterDividendAmount = dividendAmountQuarter !== undefined;
+                                const dividendPercentQuarter = QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS[header.column.id];
+                                const isQuarterDividendPercent = dividendPercentQuarter !== undefined;
                                 const isSummed =
                                     isFinalAllocation || isIdealAllocation || isValue || isAddMoney || isQuarterDividendAmount;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
@@ -935,6 +952,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     ? addMoneySum
                                     : isQuarterDividendAmount
                                     ? quarterlyDividendAmountSums[dividendAmountQuarter]
+                                    : isQuarterDividendPercent
+                                    ? `${quarterlyDividendPercentAverages[dividendPercentQuarter]}%`
                                     : null;
                                 const tooltipTitle = isSummed ? 'sum of column' : 'average for column';
 
@@ -1010,7 +1029,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 </Tooltip>
                                             </Box>
                                         )}
-                                        {(isAveraged || isSummed || isFundScore) && (
+                                        {(isAveraged || isSummed || isFundScore || isQuarterDividendPercent) && (
                                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, textAlign: 'center' }}>
                                                 <Tooltip title={tooltipTitle} placement='top'>
                                                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
