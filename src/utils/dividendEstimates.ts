@@ -5,7 +5,7 @@ export type QuarterKey = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 export const QUARTER_KEYS: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-const QUARTER_START_MONTH: Record<QuarterKey, number> = { Q1: 0, Q2: 3, Q3: 6, Q4: 9 };
+export const QUARTER_START_MONTH: Record<QuarterKey, number> = { Q1: 0, Q2: 3, Q3: 6, Q4: 9 };
 
 // how many days away a price quote may be from a payment date before we consider it unreliable
 const MAX_PRICE_LOOKUP_GAP_DAYS = 10;

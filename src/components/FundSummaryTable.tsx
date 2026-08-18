@@ -40,7 +40,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { FundSummary } from '../hooks/useFundSummary';
 import { FUND_TIER_OBJ, FundTierKey } from '../constants';
 import { outlinedButtonSx } from '../styles';
-import { QUARTER_KEYS, QuarterKey } from '../utils/dividendEstimates';
+import { QUARTER_KEYS, QUARTER_START_MONTH, QuarterKey } from '../utils/dividendEstimates';
 
 dayjs.extend(customParseFormat);
 
@@ -840,9 +840,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 totalsByMonth.set(monthIndex, (totalsByMonth.get(monthIndex) ?? 0) + amount);
             });
 
-            breakdown[quarter] = Array.from(totalsByMonth.entries())
-                .sort(([a], [b]) => a - b)
-                .map(([monthIndex, total]) => ({ month: dayjs().month(monthIndex).format('MMM'), total }));
+            const quarterStartMonth = QUARTER_START_MONTH[quarter];
+            breakdown[quarter] = [quarterStartMonth, quarterStartMonth + 1, quarterStartMonth + 2].map((monthIndex) => ({
+                month: dayjs().month(monthIndex).format('MMM'),
+                total: totalsByMonth.get(monthIndex) ?? 0
+            }));
         });
 
         return breakdown;
@@ -1090,15 +1092,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 placement='top'
                                             >
                                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].length === 0 ? (
-                                                        <span>—</span>
-                                                    ) : (
-                                                        quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(({ month, total }) => (
-                                                            <span key={month}>
-                                                                {month}: {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                                            </span>
-                                                        ))
-                                                    )}
+                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(({ month, total }) => (
+                                                        <span key={month}>
+                                                            {month}: {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                        </span>
+                                                    ))}
                                                 </Box>
                                             </Tooltip>
                                         )}
