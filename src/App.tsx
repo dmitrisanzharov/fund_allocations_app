@@ -260,7 +260,7 @@ function App() {
     }, [asOfDate, backDate, maxSelectableDate]);
 
     return (
-        <Box sx={{ p: 4 }}>
+        <Box sx={{ p: 4, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
             <Box sx={{ mb: 4 }}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <Box sx={{ display: 'flex', gap: 2 }}>

@@ -1,4 +1,4 @@
-import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { MouseEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import chroma from 'chroma-js';
@@ -97,8 +97,18 @@ const HIGHLIGHTED_HEADER_BACKGROUNDS: Record<string, string> = {
 
 const COLUMN_MIN_WIDTHS: Record<string, number> = {
     latestAvailableDate: 90,
-    ...Object.fromEntries(QUARTER_KEYS.map((quarter) => [`${quarter}DividendDate`, 90]))
+    ...Object.fromEntries(QUARTER_KEYS.map((quarter) => [`${quarter}DividendDate`, 130]))
 };
+
+const HORIZONTAL_SCROLLBAR_SX = {
+    overflowX: 'scroll',
+    overflowY: 'hidden',
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'rgba(0,0,0,0.45) rgba(0,0,0,0.12)',
+    '&::-webkit-scrollbar': { height: 12 },
+    '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0,0,0,0.08)' },
+    '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 1 }
+} as const;
 
 const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     totalReturn: 'Total Returns %, including dividends',
@@ -824,7 +834,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     );
 
     const quarterlyDividendMonthlyBreakdown = useMemo(() => {
-        const breakdown = {} as Record<QuarterKey, { month: string; total: number }[]>;
+        const breakdown = {} as Record<QuarterKey, { month: string; total: number; percent: number }[]>;
 
         QUARTER_KEYS.forEach((quarter) => {
             const totalsByMonth = new Map<number, number>();
@@ -841,14 +851,18 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
             });
 
             const quarterStartMonth = QUARTER_START_MONTH[quarter];
-            breakdown[quarter] = [quarterStartMonth, quarterStartMonth + 1, quarterStartMonth + 2].map((monthIndex) => ({
-                month: dayjs().month(monthIndex).format('MMM'),
-                total: totalsByMonth.get(monthIndex) ?? 0
-            }));
+            breakdown[quarter] = [quarterStartMonth, quarterStartMonth + 1, quarterStartMonth + 2].map((monthIndex) => {
+                const total = totalsByMonth.get(monthIndex) ?? 0;
+                return {
+                    month: dayjs().month(monthIndex).format('MMM'),
+                    total,
+                    percent: totalValue === 0 ? 0 : (total / totalValue) * 100
+                };
+            });
         });
 
         return breakdown;
-    }, [effectiveFunds]);
+    }, [effectiveFunds, totalValue]);
 
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         try {
@@ -868,6 +882,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     });
     const [columnMenuAnchor, setColumnMenuAnchor] = useState<null | HTMLElement>(null);
     const [copiedSnackbarOpen, setCopiedSnackbarOpen] = useState(false);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const topScrollRef = useRef<HTMLDivElement>(null);
+    const syncingScrollRef = useRef(false);
+    const [tableScrollWidth, setTableScrollWidth] = useState(0);
+    const [tableClientWidth, setTableClientWidth] = useState(0);
 
     useEffect(() => {
         localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
@@ -882,6 +901,61 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         window.addEventListener(COPIED_EVENT, handleCopied);
         return () => window.removeEventListener(COPIED_EVENT, handleCopied);
     }, []);
+
+    useLayoutEffect(() => {
+        const container = tableContainerRef.current;
+        if (!container) {
+            return;
+        }
+
+        const updateWidth = () => {
+            setTableScrollWidth(container.scrollWidth);
+            setTableClientWidth(container.clientWidth);
+        };
+
+        updateWidth();
+
+        const tableEl = container.querySelector('table');
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(container);
+        if (tableEl) {
+            observer.observe(tableEl);
+        }
+        window.addEventListener('resize', updateWidth);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', updateWidth);
+        };
+    }, [columnVisibility, columnOrder]);
+
+    const handleTopScroll = () => {
+        if (syncingScrollRef.current) {
+            return;
+        }
+        const container = tableContainerRef.current;
+        const top = topScrollRef.current;
+        if (!container || !top) {
+            return;
+        }
+        syncingScrollRef.current = true;
+        container.scrollLeft = top.scrollLeft;
+        syncingScrollRef.current = false;
+    };
+
+    const handleTableScroll = () => {
+        if (syncingScrollRef.current) {
+            return;
+        }
+        const container = tableContainerRef.current;
+        const top = topScrollRef.current;
+        if (!container || !top) {
+            return;
+        }
+        syncingScrollRef.current = true;
+        top.scrollLeft = container.scrollLeft;
+        syncingScrollRef.current = false;
+    };
 
     const columnDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -912,7 +986,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     };
 
     return (
-        <Box>
+        <Box sx={{ width: '100%', minWidth: 0 }}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
                 <Tooltip title='Show/hide columns' placement='top' arrow>
                     <Button variant='outlined' sx={outlinedButtonSx} size='small' onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
@@ -942,7 +1016,28 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                     </DndContext>
                 </Menu>
             </Box>
-            <TableContainer>
+            {tableScrollWidth > tableClientWidth && (
+                <Box
+                    ref={topScrollRef}
+                    onScroll={handleTopScroll}
+                    sx={{
+                        ...HORIZONTAL_SCROLLBAR_SX,
+                        height: 16,
+                        mb: 0.5,
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 3,
+                        backgroundColor: 'white'
+                    }}
+                >
+                    <Box sx={{ width: tableScrollWidth, height: 1 }} />
+                </Box>
+            )}
+            <TableContainer
+                ref={tableContainerRef}
+                onScroll={handleTableScroll}
+                sx={{ ...HORIZONTAL_SCROLLBAR_SX, width: '100%' }}
+            >
                 <Table>
                     <TableHead>
                         <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
@@ -1088,13 +1183,13 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                         )}
                                         {isQuarterDividendDate && (
                                             <Tooltip
-                                                title='Estimated total payment per month this quarter, summed across all funds paying that month (based on Current Value)'
+                                                title="Estimated total payment per month this quarter, summed across all funds paying that month (based on Current Value). Percentage is that month's payment as a share of total fund value."
                                                 placement='top'
                                             >
                                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(({ month, total }) => (
+                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(({ month, total, percent }) => (
                                                         <span key={month}>
-                                                            {month}: {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                            {month}: {total.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({percent.toFixed(2)}%)
                                                         </span>
                                                     ))}
                                                 </Box>
