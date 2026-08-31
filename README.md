@@ -12,3 +12,46 @@
 - so we have 2 headers
 - 1. Summary header - is the top header
 - 2. title row header - is the main header
+
+
+
+####################################################################
+## How to add a new fund
+####################################################################
+
+- Ideally its faster to get AI to do it, but if you want manually then:
+
+
+1. add it to the FUNDS array: src/constants.ts  -> FUNDS object
+
+2. add it to the APP file as a fund: src/App.tsx  ->  see HOOKS that generate config:     
+
+    const ishareUkConfig = getFundConfig('ishareUk');
+    const ishareUk = useFundSummary(
+        ishareUkConfig.name,
+        ishareUkConfig.isin,
+        ishareUkConfig.pricesSheet,
+        ishareUkConfig.dividendsSheet,
+        backDate,
+        asOfDate,
+        ishareUkConfig.taxRate
+    );
+
+3. add to the Summaries useMemo:
+
+    const funds = useMemo(() => {
+        const summaries = {
+            vaneck,
+            globalSelect,
+            vanguard,
+            lgEuro,
+            wisdomTreEu,
+            invescoEu,
+            ishareEuSelect,
+            ishareEuBank,
+            ishareUk
+            <!-- SHOULD GO HERE -->
+        };
+
+
+-------------------------------------------------------------------------
