@@ -60,3 +60,11 @@
 
 - in the FUNDS array: src/constants.ts  -> FUNDS object ... position here, determines them in the table
 
+
+
+####################################################################
+## How to un-hide the item
+####################################################################
+
+- in applications data, remove from local storage
+- 1-Sep-2026: I need to fix the bug, where there is no way to un-hide them from UI, so have to use APPLICATION data
