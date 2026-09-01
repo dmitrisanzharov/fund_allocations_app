@@ -113,17 +113,6 @@ export const FUNDS = [
         tier: 'EU'
     },
     {
-        id: 'ubsEmu',
-        name: 'UBS MSCI EMU Value UCITS ETF EUR dis (EMVEUA)',
-        isin: 'LU0446734369',
-        symbol: 'UIME',
-        value: 0,
-        lastValueUpdateDate: '31/08/2026',
-        pricesSheet: 'UbsEmu_LU0446734369',
-        dividendsSheet: 'UbsEmu_LU0446734369_div',
-        tier: 'EU'
-    },
-    {
         id: 'ishareEuBank',
         name: 'iShares STOXX Europe 600 Banks UCITS (DE) ETF',
         isin: 'DE000A0F5UJ7',

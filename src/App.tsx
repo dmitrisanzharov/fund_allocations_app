@@ -126,17 +126,6 @@ function App() {
         ishareUkConfig.taxRate
     );
 
-    const ubsEmuConfig = getFundConfig('ubsEmu'); // here we add ID from FUND object from constants
-    const ubsEmu = useFundSummary(
-        ubsEmuConfig.name,
-        ubsEmuConfig.isin,
-        ubsEmuConfig.pricesSheet,
-        ubsEmuConfig.dividendsSheet,
-        backDate,
-        asOfDate,
-        ubsEmuConfig.taxRate
-    );
-
     const funds = useMemo(() => {
         // here we add const name from the config
         const summaries = {
@@ -146,7 +135,6 @@ function App() {
             lgEuro,
             wisdomTreEu,
             invescoEu,
-            ubsEmu,
             ishareEuSelect,
             ishareEuBank,
             ishareUk
