@@ -146,10 +146,10 @@ function App() {
             lgEuro,
             wisdomTreEu,
             invescoEu,
+            ubsEmu,
             ishareEuSelect,
             ishareEuBank,
-            ishareUk,
-            ubsEmu
+            ishareUk
         };
 
         return FUNDS.map((config) => ({

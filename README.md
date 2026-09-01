@@ -54,4 +54,9 @@
         };
 
 
--------------------------------------------------------------------------
+####################################################################
+## How to change fund POSITION In the table
+####################################################################
+
+- in the FUNDS array: src/constants.ts  -> FUNDS object ... position here, determines them in the table
+
