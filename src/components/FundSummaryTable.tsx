@@ -33,7 +33,14 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import { createColumnHelper, flexRender, getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
+import {
+    createColumnHelper,
+    flexRender,
+    getCoreRowModel,
+    getSortedRowModel,
+    SortingState,
+    useReactTable
+} from '@tanstack/react-table';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -72,6 +79,7 @@ const OLDEST_DATE_BACKGROUND = 'lightgray';
 const COLUMN_VISIBILITY_STORAGE_KEY = 'fundSummaryTable.columnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'fundSummaryTable.columnOrder';
 const DONE_FUNDS_STORAGE_KEY = 'fundSummaryTable.doneFunds';
+const HIDDEN_ROWS_STORAGE_KEY = 'fundSummaryTable.hiddenRows';
 
 const HEADER_BACKGROUND = 'lightgray';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
@@ -112,7 +120,8 @@ const HORIZONTAL_SCROLLBAR_SX = {
 
 const HEADER_LABEL_TOOLTIPS: Record<string, string> = {
     totalReturn: 'Total Returns %, including dividends',
-    valueToAdd: 'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add',
+    valueToAdd:
+        'if in minus / green = over invested (so can sell here)... if in plus / red = under invested, need to add',
     idealAllocation: 'this is TOTAL PORTFOLIO VALUE * final allocation per cell',
     ...Object.fromEntries(
         QUARTER_KEYS.map((quarter) => [
@@ -213,7 +222,10 @@ function calculateTierScoreSums(
     return sums;
 }
 
-function calculateAllocationDifference(finalAllocation: string | null, currentAllocation: string | null): number | null {
+function calculateAllocationDifference(
+    finalAllocation: string | null,
+    currentAllocation: string | null
+): number | null {
     if (finalAllocation === null || currentAllocation === null) {
         return null;
     }
@@ -428,10 +440,13 @@ const baseColumns = [
         header: 'ISIN',
         cell: (info) => <CopyableCell label={info.getValue()} copyText={info.getValue()} />
     }),
-    columnHelper.accessor((row) => (row.latestAvailableDate ? dayjs(row.latestAvailableDate).format('DD-MMM-YYYY') : null), {
-        id: 'latestAvailableDate',
-        header: 'Latest Price Date'
-    }),
+    columnHelper.accessor(
+        (row) => (row.latestAvailableDate ? dayjs(row.latestAvailableDate).format('DD-MMM-YYYY') : null),
+        {
+            id: 'latestAvailableDate',
+            header: 'Latest Price Date'
+        }
+    ),
     columnHelper.accessor('id', {
         header: 'Fund',
         cell: (info) => (
@@ -495,6 +510,19 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const [addMoneyAmounts, setAddMoneyAmounts] = useState<Record<string, string>>({});
     const [sorting, setSorting] = useState<SortingState>([]);
 
+    const [hiddenRows, setHiddenRows] = useState<Record<string, boolean>>(() => {
+        try {
+            const stored = localStorage.getItem(HIDDEN_ROWS_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        } catch {
+            return {};
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem(HIDDEN_ROWS_STORAGE_KEY, JSON.stringify(hiddenRows));
+    }, [hiddenRows]);
+
     const effectiveFunds = useMemo(
         () =>
             funds.map((fund) => {
@@ -503,6 +531,13 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                 return { ...fund, value: baseValue + addAmount };
             }),
         [funds, valueOverrides, addMoneyAmounts]
+    );
+
+    const hiddenRowCount = useMemo(() => Object.values(hiddenRows).filter(Boolean).length, [hiddenRows]);
+
+    const tableData = useMemo(
+        () => effectiveFunds.filter((fund) => !hiddenRows[fund.id]),
+        [effectiveFunds, hiddenRows]
     );
 
     const columnAverages = useMemo(
@@ -546,13 +581,17 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     }, [funds]);
 
     const oldestValueUpdateDate = useMemo(() => {
-        const dates = funds.map((fund) => dayjs(fund.lastValueUpdateDate, 'DD/MM/YYYY')).filter((date) => date.isValid());
+        const dates = funds
+            .map((fund) => dayjs(fund.lastValueUpdateDate, 'DD/MM/YYYY'))
+            .filter((date) => date.isValid());
 
         return dates.length === 0 ? null : dates.reduce((oldest, date) => (date.isBefore(oldest) ? date : oldest));
     }, [funds]);
 
     const isValueUpdateOutOfSync = useMemo(() => {
-        const dates = funds.map((fund) => dayjs(fund.lastValueUpdateDate, 'DD/MM/YYYY')).filter((date) => date.isValid());
+        const dates = funds
+            .map((fund) => dayjs(fund.lastValueUpdateDate, 'DD/MM/YYYY'))
+            .filter((date) => date.isValid());
 
         return dates.length > 1 && !dates.every((date) => date.isSame(dates[0], 'day'));
     }, [funds]);
@@ -573,6 +612,19 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const columns = useMemo(
         () => [
             columnHelper.display({
+                id: 'hide',
+                header: 'Hide',
+                cell: (info) => (
+                    <Checkbox
+                        size='small'
+                        checked={hiddenRows[info.row.original.id] ?? false}
+                        onChange={(event) =>
+                            setHiddenRows((prev) => ({ ...prev, [info.row.original.id]: event.target.checked }))
+                        }
+                    />
+                )
+            }),
+            columnHelper.display({
                 id: 'done',
                 header: 'Done',
                 cell: (info) => (
@@ -588,7 +640,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
             ...baseColumns,
             ...AVERAGED_COLUMN_IDS.map((id) =>
                 columnHelper.accessor(
-                    (row) => calculateScore(SCORE_COLUMN_CONFIG[id].getValue(row), columnAverages[id], COLUMN_WEIGHTS[id]),
+                    (row) =>
+                        calculateScore(SCORE_COLUMN_CONFIG[id].getValue(row), columnAverages[id], COLUMN_WEIGHTS[id]),
                     { id: `${id}Score`, header: SCORE_COLUMN_CONFIG[id].header }
                 )
             ),
@@ -736,7 +789,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
             ),
             columnHelper.accessor(
                 (row) =>
-                    calculateValueToAdd(row, calculateFinalAllocation(row, columnAverages, tierScoreSums), totalValueRef.current),
+                    calculateValueToAdd(
+                        row,
+                        calculateFinalAllocation(row, columnAverages, tierScoreSums),
+                        totalValueRef.current
+                    ),
                 {
                     id: 'valueToAdd',
                     header: 'Value to Add (€)',
@@ -815,7 +872,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         (sum, fund) => sum + fund.value * (fund.quarterlyDividendEstimates[quarter].percentage / 100),
                         0
                     );
-                    return [quarter, total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })];
+                    return [
+                        quarter,
+                        total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    ];
                 })
             ) as Record<QuarterKey, string>,
         [effectiveFunds]
@@ -960,7 +1020,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const columnDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
     const table = useReactTable({
-        data: effectiveFunds,
+        data: tableData,
         columns,
         state: { columnVisibility, sorting, columnOrder },
         onColumnVisibilityChange: setColumnVisibility,
@@ -987,9 +1047,19 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
 
     return (
         <Box sx={{ width: '100%', minWidth: 0 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1, mb: 1 }}>
+                {hiddenRowCount > 0 && (
+                    <Button variant='outlined' size='small' sx={outlinedButtonSx} onClick={() => setHiddenRows({})}>
+                        Show {hiddenRowCount} hidden {hiddenRowCount === 1 ? 'row' : 'rows'}
+                    </Button>
+                )}
                 <Tooltip title='Show/hide columns' placement='top' arrow>
-                    <Button variant='outlined' sx={outlinedButtonSx} size='small' onClick={(event) => setColumnMenuAnchor(event.currentTarget)}>
+                    <Button
+                        variant='outlined'
+                        sx={outlinedButtonSx}
+                        size='small'
+                        onClick={(event) => setColumnMenuAnchor(event.currentTarget)}
+                    >
                         <ViewColumnIcon fontSize='small' />
                     </Button>
                 </Tooltip>
@@ -1007,7 +1077,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 <SortableColumnMenuItem
                                     key={column.id}
                                     id={column.id}
-                                    label={typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id}
+                                    label={
+                                        typeof column.columnDef.header === 'string'
+                                            ? column.columnDef.header
+                                            : column.id
+                                    }
                                     checked={column.getIsVisible()}
                                     onToggle={column.getToggleVisibilityHandler()}
                                 />
@@ -1043,7 +1117,9 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
                             {table.getFlatHeaders().map((header) => {
                                 const isDone = header.column.id === 'done';
-                                const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(header.column.id);
+                                const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(
+                                    header.column.id
+                                );
                                 const isFundScore = header.column.id === 'fundScore';
                                 const isFinalAllocation = header.column.id === 'finalAllocation';
                                 const isIdealAllocation = header.column.id === 'idealAllocation';
@@ -1053,35 +1129,42 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const isLatestAvailableDate = header.column.id === 'latestAvailableDate';
                                 const priceDataAgeDays =
                                     isLatestAvailableDate && oldestLatestAvailableDate
-                                        ? dayjs().startOf('day').diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
+                                        ? dayjs()
+                                              .startOf('day')
+                                              .diff(dayjs(oldestLatestAvailableDate).startOf('day'), 'day')
                                         : null;
                                 const dividendAmountQuarter = QUARTER_DIVIDEND_AMOUNT_COLUMN_QUARTERS[header.column.id];
                                 const isQuarterDividendAmount = dividendAmountQuarter !== undefined;
-                                const dividendPercentQuarter = QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS[header.column.id];
+                                const dividendPercentQuarter =
+                                    QUARTER_DIVIDEND_PERCENT_COLUMN_QUARTERS[header.column.id];
                                 const isQuarterDividendPercent = dividendPercentQuarter !== undefined;
                                 const dividendDateQuarter = QUARTER_DIVIDEND_DATE_COLUMN_QUARTERS[header.column.id];
                                 const isQuarterDividendDate = dividendDateQuarter !== undefined;
                                 const isSummed =
-                                    isFinalAllocation || isIdealAllocation || isValue || isAddMoney || isQuarterDividendAmount;
+                                    isFinalAllocation ||
+                                    isIdealAllocation ||
+                                    isValue ||
+                                    isAddMoney ||
+                                    isQuarterDividendAmount;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                 const value = isAveraged
                                     ? columnAverages[header.column.id as (typeof AVERAGED_COLUMN_IDS)[number]]
                                     : isFundScore
-                                    ? fundScoreAverage
-                                    : isFinalAllocation
-                                    ? finalAllocationSum
-                                    : isIdealAllocation
-                                    ? idealAllocationSum
-                                    : isValue
-                                    ? valueSum
-                                    : isAddMoney
-                                    ? addMoneySum
-                                    : isQuarterDividendAmount
-                                    ? quarterlyDividendAmountSums[dividendAmountQuarter]
-                                    : isQuarterDividendPercent
-                                    ? `${quarterlyDividendPercentAverages[dividendPercentQuarter]}%`
-                                    : null;
+                                      ? fundScoreAverage
+                                      : isFinalAllocation
+                                        ? finalAllocationSum
+                                        : isIdealAllocation
+                                          ? idealAllocationSum
+                                          : isValue
+                                            ? valueSum
+                                            : isAddMoney
+                                              ? addMoneySum
+                                              : isQuarterDividendAmount
+                                                ? quarterlyDividendAmountSums[dividendAmountQuarter]
+                                                : isQuarterDividendPercent
+                                                  ? `${quarterlyDividendPercentAverages[dividendPercentQuarter]}%`
+                                                  : null;
                                 const tooltipTitle = isSummed ? 'sum of column' : 'average for column';
 
                                 return (
@@ -1115,12 +1198,27 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             </Box>
                                         )}
                                         {isAllocationAmount && (
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
-                                                <Tooltip title='Copy each Allocation Amount into the Add Moneys column' placement='top'>
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'flex-start',
+                                                    gap: 0.5
+                                                }}
+                                            >
+                                                <Tooltip
+                                                    title='Copy each Allocation Amount into the Add Moneys column'
+                                                    placement='top'
+                                                >
                                                     <Button
                                                         variant='outlined'
                                                         size='small'
-                                                        sx={{ ...outlinedButtonSx, backgroundColor: 'white', minWidth: 0, px: 1 }}
+                                                        sx={{
+                                                            ...outlinedButtonSx,
+                                                            backgroundColor: 'white',
+                                                            minWidth: 0,
+                                                            px: 1
+                                                        }}
                                                         onClick={() =>
                                                             setAddMoneyAmounts((prev) => {
                                                                 const next = { ...prev };
@@ -1134,7 +1232,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                                         return;
                                                                     }
                                                                     const amount =
-                                                                        (Number(finalAllocation) / 100) * allocationAmountNumber;
+                                                                        (Number(finalAllocation) / 100) *
+                                                                        allocationAmountNumber;
                                                                     next[fund.id] = amount.toFixed(2);
                                                                 });
                                                                 return next;
@@ -1144,37 +1243,63 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                         +
                                                     </Button>
                                                 </Tooltip>
-                                                <Tooltip title='Enter an amount to allocate using the Final Allocation %' placement='bottom'>
+                                                <Tooltip
+                                                    title='Enter an amount to allocate using the Final Allocation %'
+                                                    placement='bottom'
+                                                >
                                                     <TextField
                                                         size='small'
                                                         type='number'
                                                         placeholder='Amount'
                                                         value={allocationInputAmount}
-                                                        onChange={(event) => setAllocationInputAmount(event.target.value)}
+                                                        onChange={(event) =>
+                                                            setAllocationInputAmount(event.target.value)
+                                                        }
                                                         sx={{ width: 110, backgroundColor: 'white', borderRadius: 1 }}
                                                     />
                                                 </Tooltip>
                                             </Box>
                                         )}
                                         {(isAveraged || isSummed || isFundScore || isQuarterDividendPercent) && (
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, textAlign: 'center' }}>
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: 0.25,
+                                                    textAlign: 'center'
+                                                }}
+                                            >
                                                 <Tooltip title={tooltipTitle} placement='top'>
-                                                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                                                    <Box
+                                                        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                                                    >
                                                         <span>{value}</span>
                                                         <InfoOutlinedIcon fontSize='small' />
                                                     </Box>
                                                 </Tooltip>
                                                 {isIdealAllocation &&
                                                     (isIdealAllocationBalanced ? (
-                                                        <Tooltip title='Ideal Allocation total matches the Current Value total' placement='top'>
-                                                            <span style={{ color: 'black', fontSize: '0.7rem' }}>(correct)</span>
+                                                        <Tooltip
+                                                            title='Ideal Allocation total matches the Current Value total'
+                                                            placement='top'
+                                                        >
+                                                            <span style={{ color: 'black', fontSize: '0.7rem' }}>
+                                                                (correct)
+                                                            </span>
                                                         </Tooltip>
                                                     ) : (
                                                         <Tooltip
                                                             title='Ideal Allocation total does NOT match the Current Value total'
                                                             placement='top'
                                                         >
-                                                            <span style={{ color: 'red', fontWeight: 'bold', fontSize: '1.4rem' }}>
+                                                            <span
+                                                                style={{
+                                                                    color: 'red',
+                                                                    fontWeight: 'bold',
+                                                                    fontSize: '1.4rem'
+                                                                }}
+                                                            >
                                                                 INCORRECT
                                                             </span>
                                                         </Tooltip>
@@ -1186,12 +1311,24 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 title="Estimated total payment per month this quarter, summed across all funds paying that month (based on Current Value). Percentage is that month's payment as a share of total fund value."
                                                 placement='top'
                                             >
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(({ month, total, percent }) => (
-                                                        <span key={month}>
-                                                            {month}: {total.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({percent.toFixed(2)}%)
-                                                        </span>
-                                                    ))}
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'flex-start'
+                                                    }}
+                                                >
+                                                    {quarterlyDividendMonthlyBreakdown[dividendDateQuarter].map(
+                                                        ({ month, total, percent }) => (
+                                                            <span key={month}>
+                                                                {month}:{' '}
+                                                                {total.toLocaleString(undefined, {
+                                                                    maximumFractionDigits: 0
+                                                                })}{' '}
+                                                                ({percent.toFixed(2)}%)
+                                                            </span>
+                                                        )
+                                                    )}
                                                 </Box>
                                             </Tooltip>
                                         )}
@@ -1209,7 +1346,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 placement='top'
                                             >
                                                 <span>
-                                                    Data age: {priceDataAgeDays} {priceDataAgeDays === 1 ? 'day' : 'days'}
+                                                    Data age: {priceDataAgeDays}{' '}
+                                                    {priceDataAgeDays === 1 ? 'day' : 'days'}
                                                 </span>
                                             </Tooltip>
                                         )}
@@ -1221,9 +1359,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                             <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
                                 {headerGroup.headers.map((header) => {
                                     const isValue = header.column.id === 'value';
-                                    const highlightBackground = isValue && isValueUpdateOutOfSync
-                                        ? STALE_DATA_BACKGROUND
-                                        : HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
+                                    const highlightBackground =
+                                        isValue && isValueUpdateOutOfSync
+                                            ? STALE_DATA_BACKGROUND
+                                            : HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                     const isAddMoney = header.column.id === 'addMoney';
                                     const headerLabelTooltip = HEADER_LABEL_TOOLTIPS[header.column.id];
                                     const valueUpdateDaysOld =
@@ -1248,7 +1387,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                         <Button
                                                             variant='outlined'
                                                             size='small'
-                                                            sx={{ ...outlinedButtonSx, backgroundColor: 'white', minWidth: 0, px: 1, alignSelf: 'flex-start', mb: 0.5 }}
+                                                            sx={{
+                                                                ...outlinedButtonSx,
+                                                                backgroundColor: 'white',
+                                                                minWidth: 0,
+                                                                px: 1,
+                                                                alignSelf: 'flex-start',
+                                                                mb: 0.5
+                                                            }}
                                                             onClick={() => setAddMoneyAmounts({})}
                                                         >
                                                             -
@@ -1264,16 +1410,27 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                                 gap: 0.25,
                                                                 cursor: canSort ? 'pointer' : undefined
                                                             }}
-                                                            onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                                                            onClick={
+                                                                canSort
+                                                                    ? header.column.getToggleSortingHandler()
+                                                                    : undefined
+                                                            }
                                                         >
-                                                            <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                                            <span>
+                                                                {flexRender(
+                                                                    header.column.columnDef.header,
+                                                                    header.getContext()
+                                                                )}
+                                                            </span>
                                                             {canSort &&
                                                                 (sortDirection === 'asc' ? (
                                                                     <ArrowUpwardIcon fontSize='inherit' />
                                                                 ) : (
                                                                     <ArrowDownwardIcon
                                                                         fontSize='inherit'
-                                                                        sx={{ opacity: sortDirection === 'desc' ? 1 : 0.3 }}
+                                                                        sx={{
+                                                                            opacity: sortDirection === 'desc' ? 1 : 0.3
+                                                                        }}
                                                                     />
                                                                 ))}
                                                         </Box>
@@ -1289,21 +1446,24 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                 })()}
                                                 {isValue && oldestValueUpdateDate && valueUpdateDaysOld !== null && (
                                                     <Tooltip
-                                                        title="Oldest fund value update date across funds"
+                                                        title='Oldest fund value update date across funds'
                                                         placement='top'
                                                     >
                                                         <span>
-                                                            ({oldestValueUpdateDate.format('DD-MMM-YYYY')}, {valueUpdateDaysOld}{' '}
+                                                            ({oldestValueUpdateDate.format('DD-MMM-YYYY')},{' '}
+                                                            {valueUpdateDaysOld}{' '}
                                                             {valueUpdateDaysOld === 1 ? 'day' : 'days'})
                                                         </span>
                                                     </Tooltip>
                                                 )}
                                                 {isValue && isValueUpdateOutOfSync && (
                                                     <Tooltip
-                                                        title="One of the funds is OUT OF SYNC - not all Current Value figures were last updated on the same date"
+                                                        title='One of the funds is OUT OF SYNC - not all Current Value figures were last updated on the same date'
                                                         placement='top'
                                                     >
-                                                        <span style={{ color: 'red', fontWeight: 'bold' }}>OUT OF SYNC</span>
+                                                        <span style={{ color: 'red', fontWeight: 'bold' }}>
+                                                            OUT OF SYNC
+                                                        </span>
                                                     </Tooltip>
                                                 )}
                                             </Box>
@@ -1322,7 +1482,9 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     if (cell.column.id === 'latestAvailableDate') {
                                         const latestAvailableDate = row.original.latestAvailableDate;
                                         const daysOld = latestAvailableDate
-                                            ? dayjs().startOf('day').diff(dayjs(latestAvailableDate).startOf('day'), 'day')
+                                            ? dayjs()
+                                                  .startOf('day')
+                                                  .diff(dayjs(latestAvailableDate).startOf('day'), 'day')
                                             : null;
                                         const isStale = daysOld !== null && daysOld > STALE_DATA_THRESHOLD_DAYS;
                                         const isOldestAcrossFunds =
@@ -1334,7 +1496,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             return (
                                                 <TableCell
                                                     key={cell.id}
-                                                    sx={{ backgroundColor: OLDEST_DATE_BACKGROUND, minWidth: COLUMN_MIN_WIDTHS[cell.column.id] }}
+                                                    sx={{
+                                                        backgroundColor: OLDEST_DATE_BACKGROUND,
+                                                        minWidth: COLUMN_MIN_WIDTHS[cell.column.id]
+                                                    }}
                                                 >
                                                     <Tooltip
                                                         title="This is the oldest latest-price date across all funds - it sets the app's 'as of date' and needs updating"
@@ -1350,7 +1515,10 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             return (
                                                 <TableCell
                                                     key={cell.id}
-                                                    sx={{ backgroundColor: STALE_DATA_BACKGROUND, minWidth: COLUMN_MIN_WIDTHS[cell.column.id] }}
+                                                    sx={{
+                                                        backgroundColor: STALE_DATA_BACKGROUND,
+                                                        minWidth: COLUMN_MIN_WIDTHS[cell.column.id]
+                                                    }}
                                                 >
                                                     <Tooltip title={`Data is: ${daysOld} days old`} placement='top'>
                                                         <span>{cellContent}</span>

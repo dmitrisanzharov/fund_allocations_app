@@ -127,6 +127,7 @@ function App() {
     );
 
     const funds = useMemo(() => {
+        // here we add const name from the config
         const summaries = {
             vaneck,
             globalSelect,
