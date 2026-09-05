@@ -72,6 +72,13 @@ const QUARTER_DIVIDEND_DATE_COLUMN_QUARTERS: Record<string, QuarterKey> = Object
     QUARTER_KEYS.map((quarter) => [`${quarter}DividendDate`, quarter])
 );
 
+function calculateTotalEstimatedDividends(row: FundRow): number {
+    return QUARTER_KEYS.reduce(
+        (total, quarter) => total + row.value * (row.quarterlyDividendEstimates[quarter].percentage / 100),
+        0
+    );
+}
+
 const STALE_DATA_THRESHOLD_DAYS = 14;
 const STALE_DATA_BACKGROUND = '#ef9a9a';
 const OLDEST_DATE_BACKGROUND = 'lightgray';
@@ -819,7 +826,13 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         );
                     }
                 }
-            )
+            ),
+            columnHelper.accessor(calculateTotalEstimatedDividends, {
+                id: 'totalEstimatedDividends',
+                header: 'Total Annual Dividends in Euro',
+                cell: (info) =>
+                    info.getValue().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            })
         ],
         // totalValue/allocationAmountNumber/addMoneyAmounts are intentionally excluded: they change on every
         // keystroke, and rebuilding `columns` would hand flexRender new cell function identities, remounting
@@ -878,6 +891,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                     ];
                 })
             ) as Record<QuarterKey, string>,
+        [effectiveFunds]
+    );
+
+    const totalEstimatedDividendsSum = useMemo(
+        () =>
+            effectiveFunds
+                .reduce((sum, fund) => sum + calculateTotalEstimatedDividends(fund), 0)
+                .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         [effectiveFunds]
     );
 
@@ -1140,12 +1161,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                 const isQuarterDividendPercent = dividendPercentQuarter !== undefined;
                                 const dividendDateQuarter = QUARTER_DIVIDEND_DATE_COLUMN_QUARTERS[header.column.id];
                                 const isQuarterDividendDate = dividendDateQuarter !== undefined;
+                                const isTotalEstimatedDividends = header.column.id === 'totalEstimatedDividends';
                                 const isSummed =
                                     isFinalAllocation ||
                                     isIdealAllocation ||
                                     isValue ||
                                     isAddMoney ||
-                                    isQuarterDividendAmount;
+                                    isQuarterDividendAmount ||
+                                    isTotalEstimatedDividends;
                                 const isBasedOnPeriod = BASED_ON_PERIOD_COLUMN_IDS.includes(header.column.id);
                                 const highlightBackground = HIGHLIGHTED_HEADER_BACKGROUNDS[header.column.id];
                                 const value = isAveraged
@@ -1162,6 +1185,8 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                               ? addMoneySum
                                               : isQuarterDividendAmount
                                                 ? quarterlyDividendAmountSums[dividendAmountQuarter]
+                                                : isTotalEstimatedDividends
+                                                  ? totalEstimatedDividendsSum
                                                 : isQuarterDividendPercent
                                                   ? `${quarterlyDividendPercentAverages[dividendPercentQuarter]}%`
                                                   : null;
