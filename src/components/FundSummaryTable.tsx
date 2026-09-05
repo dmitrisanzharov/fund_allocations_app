@@ -837,7 +837,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         // totalValue/allocationAmountNumber/addMoneyAmounts are intentionally excluded: they change on every
         // keystroke, and rebuilding `columns` would hand flexRender new cell function identities, remounting
         // the per-row inputs mid-typing. Cells read the current values via the refs above instead.
-        [columnAverages, tierScoreSums, doneFunds, valueOverrides, editingFundId]
+        [columnAverages, tierScoreSums, doneFunds, valueOverrides, editingFundId, hiddenRows]
     );
 
     const finalAllocationSum = useMemo(
