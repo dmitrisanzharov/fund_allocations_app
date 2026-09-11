@@ -89,6 +89,7 @@ const DONE_FUNDS_STORAGE_KEY = 'fundSummaryTable.doneFunds';
 const HIDDEN_ROWS_STORAGE_KEY = 'fundSummaryTable.hiddenRows';
 
 const HEADER_BACKGROUND = 'lightgray';
+const STICKY_FUND_BACKGROUND = '#f0f0f0';
 const AVERAGED_HEADER_BACKGROUND = 'darkgray';
 const ALLOCATION_HEADER_BACKGROUND = 'darkgoldenrod';
 const FUND_SCORE_HEADER_BACKGROUND = 'green';
@@ -968,6 +969,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
     const syncingScrollRef = useRef(false);
     const [tableScrollWidth, setTableScrollWidth] = useState(0);
     const [tableClientWidth, setTableClientWidth] = useState(0);
+    const [isTableHorizontallyScrolled, setIsTableHorizontallyScrolled] = useState(false);
 
     useEffect(() => {
         localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
@@ -1022,6 +1024,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         syncingScrollRef.current = true;
         container.scrollLeft = top.scrollLeft;
         syncingScrollRef.current = false;
+        setIsTableHorizontallyScrolled(top.scrollLeft > 0);
     };
 
     const handleTableScroll = () => {
@@ -1036,6 +1039,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
         syncingScrollRef.current = true;
         top.scrollLeft = container.scrollLeft;
         syncingScrollRef.current = false;
+        setIsTableHorizontallyScrolled(container.scrollLeft > 0);
     };
 
     const columnDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -1198,7 +1202,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                         key={header.id}
                                         sx={{
                                             fontWeight: 'bold',
-                                            backgroundColor: highlightBackground,
+                                            backgroundColor: isFund
+                                                ? isTableHorizontallyScrolled
+                                                    ? STICKY_FUND_BACKGROUND
+                                                    : HEADER_BACKGROUND
+                                                : highlightBackground,
                                             minWidth: COLUMN_MIN_WIDTHS[header.column.id],
                                             ...(isFund && {
                                                 position: 'sticky',
@@ -1411,7 +1419,11 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             key={header.id}
                                             sx={{
                                                 fontWeight: 'bold',
-                                                backgroundColor: highlightBackground,
+                                                backgroundColor: isFund
+                                                    ? isTableHorizontallyScrolled
+                                                        ? STICKY_FUND_BACKGROUND
+                                                        : HEADER_BACKGROUND
+                                                    : highlightBackground,
                                                 minWidth: COLUMN_MIN_WIDTHS[header.column.id],
                                                 ...(isFund && {
                                                     position: 'sticky',
@@ -1596,7 +1608,9 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                                     position: 'sticky',
                                                     left: 0,
                                                     zIndex: 1,
-                                                    backgroundColor: 'white',
+                                                    backgroundColor: isTableHorizontallyScrolled
+                                                        ? STICKY_FUND_BACKGROUND
+                                                        : 'white',
                                                     boxShadow: '2px 0 3px rgba(0, 0, 0, 0.12)'
                                                 })
                                             }}
