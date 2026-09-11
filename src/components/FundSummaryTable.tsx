@@ -1138,6 +1138,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         <TableRow sx={{ backgroundColor: HEADER_BACKGROUND }}>
                             {table.getFlatHeaders().map((header) => {
                                 const isDone = header.column.id === 'done';
+                                const isFund = header.column.id === 'id';
                                 const isAveraged = (AVERAGED_COLUMN_IDS as readonly string[]).includes(
                                     header.column.id
                                 );
@@ -1198,7 +1199,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                         sx={{
                                             fontWeight: 'bold',
                                             backgroundColor: highlightBackground,
-                                            minWidth: COLUMN_MIN_WIDTHS[header.column.id]
+                                            minWidth: COLUMN_MIN_WIDTHS[header.column.id],
+                                            ...(isFund && {
+                                                position: 'sticky',
+                                                left: 0,
+                                                zIndex: 2,
+                                                backgroundColor: HEADER_BACKGROUND,
+                                                boxShadow: '2px 0 3px rgba(0, 0, 0, 0.12)'
+                                            })
                                         }}
                                     >
                                         {isDone && (
@@ -1383,6 +1391,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id} sx={{ backgroundColor: HEADER_BACKGROUND }}>
                                 {headerGroup.headers.map((header) => {
+                                    const isFund = header.column.id === 'id';
                                     const isValue = header.column.id === 'value';
                                     const highlightBackground =
                                         isValue && isValueUpdateOutOfSync
@@ -1403,7 +1412,14 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                             sx={{
                                                 fontWeight: 'bold',
                                                 backgroundColor: highlightBackground,
-                                                minWidth: COLUMN_MIN_WIDTHS[header.column.id]
+                                                minWidth: COLUMN_MIN_WIDTHS[header.column.id],
+                                                ...(isFund && {
+                                                    position: 'sticky',
+                                                    left: 0,
+                                                    zIndex: 2,
+                                                    backgroundColor: HEADER_BACKGROUND,
+                                                    boxShadow: '2px 0 3px rgba(0, 0, 0, 0.12)'
+                                                })
                                             }}
                                         >
                                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -1503,6 +1519,7 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                             <TableRow key={row.id}>
                                 {row.getVisibleCells().map((cell) => {
                                     const cellContent = flexRender(cell.column.columnDef.cell, cell.getContext());
+                                    const isFund = cell.column.id === 'id';
 
                                     if (cell.column.id === 'latestAvailableDate') {
                                         const latestAvailableDate = row.original.latestAvailableDate;
@@ -1571,7 +1588,19 @@ export function FundSummaryTable({ funds, analysisYears }: FundSummaryTableProps
                                     }
 
                                     return (
-                                        <TableCell key={cell.id} sx={{ minWidth: COLUMN_MIN_WIDTHS[cell.column.id] }}>
+                                        <TableCell
+                                            key={cell.id}
+                                            sx={{
+                                                minWidth: COLUMN_MIN_WIDTHS[cell.column.id],
+                                                ...(isFund && {
+                                                    position: 'sticky',
+                                                    left: 0,
+                                                    zIndex: 1,
+                                                    backgroundColor: 'white',
+                                                    boxShadow: '2px 0 3px rgba(0, 0, 0, 0.12)'
+                                                })
+                                            }}
+                                        >
                                             {cellContent}
                                         </TableCell>
                                     );
