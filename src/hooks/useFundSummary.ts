@@ -18,6 +18,8 @@ export interface FundSummary {
     newestPlusDividends: number | null;
     correctDifferenceAsPercent: string | null;
     averageDividendYield: string | null;
+    averageDividendYieldBeforeTax: string | null;
+    taxRate: number;
     returnPerRisk: string | null;
     quarterlyDividendEstimates: Record<QuarterKey, QuarterlyDividendEstimate>;
 }
@@ -93,14 +95,21 @@ export function useFundSummary(
     }, [priceDifference, totalDividends]);
 
     // here we take filteredDividends data, take 'yield' column and calculate average, net of tax
-    const averageDividendYield = useMemo(() => {
+    const averageDividendYields = useMemo(() => {
         if (filteredDividends.length === 0) {
-            return null;
+            return { afterTax: null, beforeTax: null };
         }
 
-        const total = filteredDividends.reduce((sum, row) => sum + parseFloat(row.Yield) * netOfTaxFactor, 0);
+        const totalAfterTax = filteredDividends.reduce(
+            (sum, row) => sum + parseFloat(row.Yield) * netOfTaxFactor,
+            0
+        );
+        const totalBeforeTax = filteredDividends.reduce((sum, row) => sum + parseFloat(row.Yield), 0);
 
-        return (total / filteredDividends.length).toFixed(2);
+        return {
+            afterTax: (totalAfterTax / filteredDividends.length).toFixed(2),
+            beforeTax: (totalBeforeTax / filteredDividends.length).toFixed(2)
+        };
     }, [filteredDividends, netOfTaxFactor]);
 
     // estimated per-quarter dividend %/date, based on ALL historical payments for this fund (not the selected analysis range)
@@ -141,7 +150,9 @@ export function useFundSummary(
         totalDividends,
         newestPlusDividends: totalValueIncludingDividends?.newestPlusDividends ?? null,
         correctDifferenceAsPercent: totalValueIncludingDividends?.correctDifferenceAsPercent ?? null,
-        averageDividendYield,
+        averageDividendYield: averageDividendYields.afterTax,
+        averageDividendYieldBeforeTax: averageDividendYields.beforeTax,
+        taxRate: taxRate ?? 0,
         returnPerRisk,
         quarterlyDividendEstimates,
     };

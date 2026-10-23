@@ -474,7 +474,26 @@ const baseColumns = [
     }),
     columnHelper.accessor((row) => row.averageDividendYield, {
         id: 'averageYield',
-        header: 'Avg Dividend Yield %'
+        header: 'Avg Dividend Yield %',
+        cell: (info) => {
+            const { averageDividendYieldBeforeTax, taxRate } = info.row.original;
+            const showTaxInfo = taxRate > 0 && averageDividendYieldBeforeTax !== null;
+            const taxPercentage = Number((taxRate * 100).toFixed(2));
+
+            return (
+                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                    {info.getValue()}
+                    {showTaxInfo && (
+                        <Tooltip
+                            title={`After-tax figure, tax was ${taxPercentage}%, before tax it was ${averageDividendYieldBeforeTax}%.`}
+                            placement='top'
+                        >
+                            <InfoOutlinedIcon fontSize='small' sx={{ color: 'text.secondary' }} />
+                        </Tooltip>
+                    )}
+                </Box>
+            );
+        }
     }),
     columnHelper.accessor((row) => row.returnPerRisk, {
         id: 'returnPerRisk',
